@@ -142,6 +142,34 @@ Use this section to document non-obvious decisions and patterns as they emerge.
 
 ---
 
+---
+
+## Agent Working Agreements
+
+> TODO: Once finalised here, migrate this section into the `agentic-coding-framework` CLAUDE.md template so all projects inherit it.
+
+### Think before coding
+- State assumptions explicitly; if uncertain, ask. Present multiple interpretations — don't pick silently.
+- Using a framework or library? Pull current docs before relying on training memory. *(context7 integration to be configured — see Zarif for repos/libraries list)*
+
+### Goal-driven execution
+For multi-step work, open with a brief plan:
+```
+1. [step] → verify: [check]
+2. [step] → verify: [check]
+```
+
+### Grounding
+Label every result `verified` (ran it, output shown) or `expected` (reasoned, not run). Never report a result not observed in tool output.
+
+### Subagents
+Delegate independent subtasks and keep working while they run. Intervene if one drifts or lacks context.
+
+### Final summary
+Your closing message is for someone who saw none of your working steps. Lead with the outcome in one sentence, then supporting detail, then what you need from them. Complete sentences, no shorthand.
+
+---
+
 **Last Updated**: [YYYY-MM-DD] | **Status**: [Active development / Production] | **Maintainers**: [Names]
 
 **Docs**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [SYNCHRONIZATIONS.md](SYNCHRONIZATIONS.md) · [CONTRIBUTING.md](CONTRIBUTING.md)

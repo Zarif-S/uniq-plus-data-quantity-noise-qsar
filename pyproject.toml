@@ -1,0 +1,34 @@
+[project]
+name = "computational-adme"
+version = "0.1.0"
+description = "ADME property prediction experiments on the public 3521-compound dataset"
+requires-python = ">=3.10,<3.11"
+dependencies = [
+    # Core ML
+    "scikit-learn==1.3.2",
+    "xgboost==2.0.3",
+    "lightgbm==4.3.0",
+
+    # Cheminformatics
+    "rdkit==2023.9.5",
+
+    # Deep learning backbone (required by both deepchem and chemprop)
+    "torch==2.0.1",
+
+    # Molecular ML frameworks
+    "deepchem==2.8.0",
+    "chemprop==1.6.1",
+
+    # Data
+    "numpy==1.26.4",
+    "pandas==2.1.4",
+    "scipy==1.11.4",  # Pin modern version with arm64 wheels (overrides old transitive dep from xgboost)
+
+    # Visualisation
+    "matplotlib==3.8.2",
+    "plotly==5.18.0",
+]
+
+[tool.uv]
+# Pin Python version for reproducibility
+python-preference = "only-managed"
