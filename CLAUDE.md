@@ -1,18 +1,26 @@
-# Claude Code Configuration - [Your Project Name]
+# Claude Code Configuration - UNIQ+
 
 ## Project Overview
 
-**[Your Project Name]** is [brief 1-2 sentence description of what your project does].
+**UNIQ+** (Data Quantity, Noise & ML in Drug Discovery QSAR) investigates how dataset size and label noise affect machine learning model performance for molecular property prediction. The project uses two datasets:
+- **ADME dataset**: 3521 compounds, 6 endpoints (HLM/RLM clearance, MDR1 efflux, solubility, PPB human/rat)
+- **PDE10A dataset**: PDE10A inhibitors with pIC50 values and 7 split strategies (temporal 2011–2013, chemotype-based, random)
 
 ### Key Technologies
-- [Language/Runtime]: [e.g., Python 3.11, Node.js 18]
-- [Database/Storage]: [e.g., PostgreSQL, S3]
-- [Key Dependencies]: [e.g., FastAPI, React, PyTorch]
+- Python 3.10 (managed via uv)
+- ML: scikit-learn, XGBoost, LightGBM, DeepChem 2.8.0, ChemProp 1.6.1
+- Cheminformatics: RDKit 2023.9.5
+- Deep learning: PyTorch 2.0.1
+- Visualisation: Plotly, Matplotlib
 
 ### Current Status
-✅ [Completed milestone]
-🔄 [In-progress milestone]
-⏳ [Planned milestone]
+✅ Environment set up and pinned (pyproject.toml + uv.lock)
+✅ ADME public dataset loaded (3521 compounds, 6 endpoints)
+🔄 Exploratory data analysis
+⏳ Baseline ML models (RF, XGBoost, LightGBM)
+⏳ Data quantity experiments (learning curves)
+⏳ Label noise experiments
+⏳ Deep learning models (ChemProp, DeepChem)
 
 ---
 
