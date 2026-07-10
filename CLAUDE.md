@@ -38,8 +38,7 @@
 │ Review recent changes            → CHANGELOG.md               │
 │ Cross-concept event flows        → SYNCHRONIZATIONS.md        │
 ├────────────────────────────────────────────────────────────────┤
-│ [Module/component name]          → [path/to/module/CLAUDE.md] │
-│ [Module/component name]          → [path/to/module/CLAUDE.md] │
+│ src/ modules (EDA, Features, Plotting) → src/CLAUDE.md        │
 ├────────────────────────────────────────────────────────────────┤
 │ All logged decisions (ADR)       → DECISIONS.md               │
 │ Process & technical lessons      → LESSONS_LEARNED.md         │
@@ -53,100 +52,110 @@
 ## Environment Setup
 
 ```bash
-# Clone and install
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Clone and install (pinned environment)
 git clone [repository-url]
-cd [project-name]
-[pip install -r requirements.txt | npm install | ...]
+cd UNIQ+
+uv sync   # installs all pinned deps from uv.lock
 
-# Environment variables
-cp .env.example .env
-# Fill in required variables (see below)
+# Activate the virtual environment
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\activate    # Windows
 
-# [Any one-time setup steps]
-[e.g., createdb myapp_dev && python manage.py migrate]
+# Launch a notebook
+jupyter lab
 ```
 
-### Environment Variables
-
-```bash
-# Required
-API_KEY=
-DATABASE_URL=
-[OTHER_REQUIRED_VAR]=
-
-# Optional
-DEBUG=false
-LOG_LEVEL=info
-```
+No environment variables required — all data is open source and loaded from local files.
 
 ---
 
 ## Project Structure
 
 ```
-[project-name]/
-├── [src/app/lib]/            # [Core logic]
-│   ├── [module]/
-│   │   └── CLAUDE.md         # Module-specific architecture guide
-│   └── [module]/
-├── tests/
-├── scripts/                  # Automation and utilities
-├── docs/
-├── .env.example
+UNIQ+/
+├── notebooks/                # Jupyter notebooks — EDA, experiments, results
+│   ├── 01_eda_adme.ipynb
+│   ├── 02_eda_pde10a.ipynb
+│   └── ...
+├── src/                      # Reusable Python modules imported by notebooks
+│   ├── features.py           # Fingerprint/descriptor computation (RDKit)
+│   ├── plotting.py           # Reusable plot functions (Matplotlib/Plotly)
+│   ├── models.py             # Model wrappers and training utilities
+│   └── noise.py              # Label noise injection utilities (future)
+├── data/
+│   ├── raw/                  # Original datasets, never modified
+│   └── processed/            # Cleaned/featurised data
+├── tests/                    # Sanity tests for src/ modules
+├── pyproject.toml            # Dependencies (managed via uv)
+├── uv.lock                   # Pinned lockfile
 ├── CLAUDE.md                 # This file
 ├── ROADMAP.md
 ├── PROJECT_PLAN.md
 ├── CHANGELOG.md
 ├── DECISIONS.md              # Architectural decision records (ADR)
-├── LESSONS_LEARNED.md        # Post-project process & technical lessons
-└── SYNCHRONIZATIONS.md       # Cross-concept event flows
+└── LESSONS_LEARNED.md        # Post-project lessons
 ```
 
 ---
 
 ## Common Tasks
 
-### [Primary workflow - e.g., "Running the app"]
+### Running notebooks
 
 ```bash
-[dev command]     # Development mode → http://localhost:[port]
-[test command]    # Run test suite
-[build command]   # Production build
+source .venv/bin/activate   # macOS/Linux
+# .venv\Scripts\activate    # Windows
+jupyter lab       # opens in browser
 ```
 
-### [Secondary workflow - e.g., "Adding a new feature"]
+### Running tests
 
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
+```bash
+uv run pytest tests/
+```
+
+### Adding a new dependency
+
+```bash
+uv add <package>   # updates pyproject.toml and uv.lock
+```
+
+### Notebook workflow
+
+1. Notebooks go in `notebooks/`, named with a number prefix (`01_`, `02_`, …)
+2. Every notebook must run top-to-bottom from a fresh kernel — verify before committing
+3. If a helper function is used in more than one notebook, move it to `src/`
 
 ---
 
-## Important Implementation Notes
+## Coding Conventions
 
-Use this section to document non-obvious decisions and patterns as they emerge.
+This is a 6-week academic research project. Conventions are minimal but non-negotiable.
 
-### [Pattern/Decision Name]
+### What we do
+- **Notebooks runnable top-to-bottom**: always verify with Kernel → Restart & Run All before treating results as final
+- **Extract to `src/` when**: a function is called in more than one notebook, or is longer than ~20 lines
+- **`src/` functions get a one-line docstring** and a corresponding sanity test in `tests/`
+- **Run `ruff check src/ tests/`** occasionally (not on every save) to catch obvious issues
 
-**Issue**: [What problem does this solve?]
+### What we skip
+- Type hints, full docstrings, CI, PRs, code reviews — not warranted for this scope
+- No `ruff format` enforced in notebooks (too disruptive to exploratory flow)
 
-**Solution**: [What approach was chosen and why?]
-
-**Location**: `[file:line_number]`
-
-**Example**:
-```[language]
-// example code snippet
-```
+### RDKit is the first resort
+RDKit handles most cheminformatics natively. Before writing custom code for fingerprints, descriptors, similarity, or 2D/3D operations, check RDKit docs first (context7 ID: `/websites/rdkit`). Custom helpers in `src/` should be thin wrappers around RDKit + plotting, not reimplementations.
 
 ---
 
 ## Known Issues & Solutions
 
-**[✅ RESOLVED | 🔄 IN PROGRESS | ⚠️ KNOWN LIMITATION]: [Title]**
-- **Issue**: [Description]
-- **Solution/Workaround**: [How it's handled]
-- **Location**: `[file:line]`
+<!-- Add entries as they arise: -->
+<!-- **[✅ RESOLVED | 🔄 IN PROGRESS | ⚠️ KNOWN LIMITATION]: [Title]** -->
+<!-- - **Issue**: [Description] -->
+<!-- - **Solution/Workaround**: [How it's handled] -->
 
 ---
 
@@ -158,7 +167,9 @@ Use this section to document non-obvious decisions and patterns as they emerge.
 
 ### Think before coding
 - State assumptions explicitly; if uncertain, ask. Present multiple interpretations — don't pick silently.
-- Using a framework or library? Pull current docs before relying on training memory. *(context7 integration to be configured — see Zarif for repos/libraries list)*
+- Before using a specific scientific library, fetch its current docs via context7 on demand — one library at a time, only when actively working with it. Do not fetch speculatively.
+  - RDKit → context7 library ID: `/websites/rdkit` (30,668 snippets, high reputation)
+  - Other libraries (DeepChem, ChemProp, etc.) → resolve and add here as needed
 
 ### Goal-driven execution
 For multi-step work, open with a brief plan:
@@ -178,6 +189,6 @@ Your closing message is for someone who saw none of your working steps. Lead wit
 
 ---
 
-**Last Updated**: [YYYY-MM-DD] | **Status**: [Active development / Production] | **Maintainers**: [Names]
+**Last Updated**: 2026-07-09 | **Status**: Active development | **Maintainers**: Zarif
 
-**Docs**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [SYNCHRONIZATIONS.md](SYNCHRONIZATIONS.md) · [CONTRIBUTING.md](CONTRIBUTING.md)
+**Docs**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [LESSONS_LEARNED.md](LESSONS_LEARNED.md)

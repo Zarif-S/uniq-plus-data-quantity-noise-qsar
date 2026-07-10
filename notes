@@ -1,0 +1,44 @@
+MOESM2_ESM.csv file has these columns with train test splits in them:
+
+"3 temporal (2011, 2012, 2013), 3 chemotype-based (aminohetaryl, aryl_c1_amide, c1_hetaryl_alkyl), 1 random = 7 total."
+
+What does that mean?
+
+1. Temporal splits (2011, 2012, 2013)                                                                                                                            
+  Compounds are assigned to train/test based on when they were measured. E.g. temporal_2012_split: compounds measured before 2012 → train, compounds from 2012  
+  onward → test. This simulates real drug discovery — you train on historical data and predict on future compounds. It's the most realistic evaluation of       
+  prospective performance.   
+    - Medicinal chemist, boss asks you to develop inhibitor for a protein, start with X amount of compounds, experimentally test them, binding affinities, want more potency, want to optimise for osome measurement, ML model to tell you what tto buy next, all can do, train on small molecs tested so far, so temporal split, dont care about what sub structures are in small molecs, just want to know what I should buy next
+    - What small molecs do I make next, 
+    - Say I care about potency, X examples, 2 or 3 that are really potent, train ML model on all data, useful to me to say, heres the ones om thinking of making, natural prediction is make the ones with high predictive potency, temporal split because, assigned all of molecules to training set that made already, and labels for
+2. Chemotype-based (scaffolds) splits (aminohetaryl, aryl_c1_amide, c1_hetaryl_alkyl)                                                                                      
+  Compounds are grouped by their chemical scaffold/series. One chemotype is held out as the test set, the others train. This tests whether your model can
+  generalise across chemical series — a much harder task than interpolating within a series. Named after the three structural classes in the PDE10A dataset.
+  - scaffold has greatger potency than another, tested 3 chemotypes, in this case trying to see if can generalise : 1. can you interpolate within that chemotype while retaining that core scaffold, useful to know how making small changes will affect something like my binding affinity, call this lead optimisation , can also use that same data for, can I genreaise between scaffolds now, 
+3. Random split
+  Compounds are randomly shuffled into train/test/val. This is the standard ML approach but the easiest — test compounds are structurally similar to training
+  compounds, so performance is typically inflated vs. real-world use.
+
+Why this matters: 7 splits let me directly compare how the same model performs under different generalisation pressures. A model that looks great on random splits may fail badly on temporal or chemotype splits.
+
+---
+usually when they say.....
+
+1 atom at a time
+
+purpose is - medicinal chemistry, heuristic assumotion, core driver of activity is the scaffold, kind of part of
+broader aspect of small molecule drug discovery, structural similarity principle, not guaranteed that have the same scaffold will have the same
+activity. by no means have same scaffold have same activity, heuristic people use quite commonly, if you have similar scaffold will have similar activity, how medicinal chemists in the first place, start with core backbone structure, add X to it, 
+
+1. so its for scaffold splitting, so we can train and test effectively, even scaffold splits not perfect.
+2. pat walters scaffold split example shows not perfect, can get almost identical molecules in train and test
+
+bottleneck not will it bind anymore, depends on have you seen this protein before, do you have a crystal structure for it, exampkles of ligands that
+bind already, does it look like a protein that we hvae drugs for arleady
+in some cases might already have drugs for a protein, problem solved already might want diff structure that binds, might different regime
+dont have any examples for your ptoeins you might care about but one closely structurally related, does it bind question, just how good we are
+how much info do we have about the proteins that we care about in the first place
+
+drug trials usually fail because not efficaious, or toxic etc, not because of binding
+
+fingerprints = features, 10 lines of code can get simple trainig dataset ready

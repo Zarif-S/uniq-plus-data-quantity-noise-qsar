@@ -1,397 +1,107 @@
-# Strategic Agentic Coding: Planning and Context Efficiency Framework
+# UNIQ+ — OPIG, Data Quantity, Noise & ML in Drug Discovery, QSAR
 
-This repo outlines an approach to coding in the era of AI agents. It maximizes the value of strategic decisions and maintains clear documentation for optimal context efficiency when working with AI coding assistants.
-
-This framework encourages building with a product and project focused mindset from the outset, ensuring technical decisions align with strategic goals.
+Project investigates how dataset size and label noise affect machine learning model performance for molecular property prediction (QSAR). It is a 6-week academic research project using two real-world drug discovery datasets and a range of ML approaches from classical fingerprint-based models to deep learning.
 
 ---
 
-## Why This Framework Exists
+## Research Questions
 
-**The Problem**: AI coding agents require context to work effectively. Traditional documentation approaches either:
-- Provide too much context (overwhelming, slow to parse)
-- Provide too little context (agents make wrong assumptions)
-- Lack strategic clarity (agents can't align with long-term vision)
-- Force agents to rebuild context from scratch on every interaction
-
-**The Solution**: A hierarchical documentation system that enables rapid context rebuilding at any altitude:
-
-1. **Multi-level context access**: Agents can quickly rebuild context from either:
-   - **Higher level** (strategic): "Why are we building this? What's the vision?" → ROADMAP.md
-   - **Lower level** (implementation): "How does this module work? What patterns do we use?" → CLAUDE.md
-
-2. **Right-sized context**: Makes it easier and quicker for agents to find exactly what they need, at the right level of detail
-
-3. **Strategic alignment**: Clear separation between vision (ROADMAP) and execution (PROJECT_PLAN) ensures agents understand both what to build and why
-
-4. **Workflow-aware design**: Aims to reduce documentation friction through focused context and batch updates, minimising the cost of finding and maintaining documentation
+1. How does training set size affect predictive performance across ADME endpoints?
+2. How much label noise can ML models tolerate before performance degrades significantly?
+3. Do deep learning models (ChemProp, DeepChem) show different noise sensitivity than classical models (RF, XGBoost)?
 
 ---
 
-## Success Criteria
+## Datasets
 
-This framework is working when:
-- ✅ Developers can quickly find the correct documentation from any entry point
-- ✅ AI agents receive **exactly the context they need** without excess
-- ✅ Documentation updates have **minimal workflow disruption**
-- ✅ Strategic decisions are **preserved and discoverable** months later
+| Dataset | Compounds | Endpoints | Source |
+|---------|-----------|-----------|--------|
+| ADME public set | 3,521 | HLM/RLM clearance, MDR1 efflux, solubility, PPB (human/rat) | Public |
+| PDE10A inhibitors | ~TBD | pIC50 | Public |
 
----
-
-## Framework Overview
-
-### Core Documentation Hierarchy (Tier 1)
-
-```
-your-project/
-├── README.md                    # Public-facing overview
-├── CLAUDE.md                    # 🎯 Main entry point for AI agents
-├── ROADMAP.md                   # Strategic vision (quarters/years)
-├── PROJECT_PLAN.md              # Tactical execution (weeks/months)
-├── CHANGELOG.md                 # Feature and change history
-├── SYNCHRONIZATIONS.md          # Cross-concept event flows
-├── CONTRIBUTING.md              # Contributor guidelines
-│
-└── src/
-    └── your-module/
-        └── CLAUDE.md            # Module-specific architecture & patterns
-```
-
-### What Goes Where?
-
-| Content Type | Root CLAUDE.md | Subfolder CLAUDE.md | Code Comments |
-|--------------|----------------|---------------------|---------------|
-| Setup & installation | ✓ Primary | | |
-| High-level architecture | ✓ Overview | Detailed design | |
-| Design patterns | Mention | Explain + examples | Reference |
-| API contracts | Link | Full specification | Implementation notes |
-| Why decisions made | Strategic context | Technical rationale | Edge cases |
-| How to extend | General guidance | Specific steps | Implementation details |
-
-### Document Purposes
-
-| Document | Timeframe | Purpose | Example Content |
-|----------|-----------|---------|-----------------|
-| **ROADMAP.md** | Quarters/Years | Strategic vision - the "destination" | "Q2 2024: Multi-tenancy support" |
-| **PROJECT_PLAN.md** | Weeks/Months | Tactical execution - the "route" | "Sprint 3: Implement OAuth middleware" |
-| **CLAUDE.md** (root) | Always current | Navigation hub + setup | Task routing, env setup, common commands |
-| **CLAUDE.md** (subfolder) | Always current | Architecture + patterns | Component design, integration guides |
-| **SYNCHRONIZATIONS.md** | Always current | Cross-concept event flows | "When user.delete fires → post.deleteAll follows" |
-| **CHANGELOG.md** | Historical | Feature history | "v2.1.0: Added rate limiting" |
+The PDE10A dataset includes 7 split strategies: temporal (2011–2013), chemotype-based, and random — enabling evaluation of model generalisation under realistic deployment conditions.
 
 ---
 
-## Quick Start
+## Setup
 
-> **New here?** See [GETTING_STARTED.md](GETTING_STARTED.md) for a step-by-step walkthrough including the skills workflow and a DS/ML project example.
-
-### 1. Copy Template Files to Your Project
+Requires Python 3.10 and [uv](https://github.com/astral-sh/uv).
 
 ```bash
-# Clone this template
-git clone https://github.com/your-username/agentic-coding-framework.git
+# Install uv if not already installed
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy core files to your project
-cp agentic-coding-framework/CLAUDE.md your-project/
-cp agentic-coding-framework/ROADMAP.md your-project/
-cp agentic-coding-framework/PROJECT_PLAN.md your-project/
-cp agentic-coding-framework/CHANGELOG.md your-project/
-cp agentic-coding-framework/SYNCHRONIZATIONS.md your-project/
+# Clone and install pinned environment
+git clone <repository-url>
+cd UNIQ+
+uv sync
 
-# Copy example subfolder CLAUDE.md
-cp agentic-coding-framework/examples/ml-workflow/CLAUDE.md your-project/src/your-module/
+# Activate and launch
+source .venv/bin/activate
+jupyter lab
 ```
 
-### 2. Customize for Your Project
+No environment variables required — all datasets are open source and loaded from local files.
 
-1. **Edit `CLAUDE.md`**: Replace placeholder content with your project structure, setup steps, and task navigation
-2. **Edit `ROADMAP.md`**: Add your strategic goals and milestones
-3. **Edit `PROJECT_PLAN.md`**: Add current sprint/iteration plans
-4. **Edit `CHANGELOG.md`**: Document your first version
+---
 
-### 3. Copy the Claude Skills (optional)
+## Project Structure
 
-If you use Claude Code, copy the included skills into your project:
+```
+UNIQ+/
+├── notebooks/          # EDA, experiments, results (numbered: 01_, 02_, ...)
+├── src/                # Reusable modules imported by notebooks
+│   ├── features.py     # Fingerprint/descriptor computation (RDKit)
+│   ├── models.py       # Model wrappers and training utilities
+│   ├── plotting.py     # Reusable plot functions
+│   └── noise.py        # Label noise injection (upcoming)
+├── data/
+│   ├── raw/            # Original datasets, never modified
+│   └── processed/      # Cleaned/featurised data
+├── tests/              # Sanity tests for src/ modules
+└── pyproject.toml      # Dependencies (managed via uv)
+```
+
+---
+
+## Current Status
+
+| Phase | Status |
+|-------|--------|
+| Environment setup | Done |
+| ADME dataset loaded | Done |
+| Exploratory data analysis | In progress |
+| Baseline ML models (RF, XGBoost, LightGBM) | Upcoming |
+| Data quantity experiments (learning curves) | Upcoming |
+| Label noise experiments | Upcoming |
+| Deep learning (ChemProp, DeepChem) | Upcoming |
+
+See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the current sprint and [ROADMAP.md](ROADMAP.md) for the full research timeline.
+
+---
+
+## Running Tests
 
 ```bash
-cp -r agentic-coding-framework/.claude your-project/
+uv run pytest tests/
 ```
 
-This gives you five `/commands` that automate the most common framework tasks:
+---
 
-| Skill | What it does |
-|-------|-------------|
-| `/concept-spec` | Guided wizard to generate a new concept `CLAUDE.md` |
-| `/plan-feature` | Plans a feature and triages which docs need updating |
-| `/sync-flow` | Adds a new SYNC-NNN entry to `SYNCHRONIZATIONS.md` |
-| `/changelog-gen` | Parses recent commits and drafts `CHANGELOG.md` entries |
-| `/doc-health` | Scans all docs for broken links, stale dates, missing sections |
+## Documentation
 
-See [`.claude/skills/`](.claude/skills/) for the full skill definitions.
-
-### 4. Start Using with AI Agents
-
-When working with Claude Code or other AI assistants:
-- Point them to `CLAUDE.md` as the main entry point
-- Reference specific sections for focused context
-- Update docs as you make changes (see `PROJECT_PLAN.md` for documentation debt tracking)
+- [ROADMAP.md](ROADMAP.md) — Research timeline and milestones
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) — Current sprint
+- [DECISIONS.md](DECISIONS.md) — Architectural decision records
+- [LESSONS_LEARNED.md](LESSONS_LEARNED.md) — Post-project lessons
+- [CHANGELOG.md](CHANGELOG.md) — Change history
 
 ---
 
-## Working with AI Agents
+## Built With
 
-The framework changes the *order of operations* for building with an agent, not just how things are documented. The key shift: **design your concepts before writing any code**. This gives the agent tight boundaries to work within and surfaces coordination decisions early — when they're cheap to change.
-
-### The four-step workflow
-
-**1. Define your concepts first**
-
-Before touching code, ask the agent to draft the concepts your project needs:
-
-> "I'm building a project that [brief description]. Using the concept spec format in `examples/ml-workflow/CLAUDE.md`, draft the concepts we need and their state/actions/invariants. Don't write any code yet."
-
-Review what it proposes. Maybe two concepts collapse into one, or a concept is too thin to justify its own module. This conversation is fast — getting it wrong in a spec is a 5-minute fix; getting it wrong in code is a refactor.
-
-**2. Write the specs and SYNCHRONIZATIONS.md**
-
-Once you've agreed on concepts, ask the agent to create the subfolder CLAUDE.md files and populate SYNCHRONIZATIONS.md:
-
-> "Create a CLAUDE.md for each concept using the format in `examples/ml-workflow/CLAUDE.md`. Then populate `SYNCHRONIZATIONS.md` with the cross-concept flows."
-
-Review the sync entries. If a coordination feels wrong, fix the spec now. This is your coordination map before any implementation exists.
-
-**3. Implement one concept at a time**
-
-Scope each coding task strictly to one concept:
-
-> "Implement the `[Concept]` concept. Follow the spec in `[path]/CLAUDE.md` exactly. Do not import from any other concept. Write unit tests that verify the invariants."
-
-Repeat for each concept. Each task is self-contained — the agent has a tight spec and a clear rule about what it must not touch.
-
-**4. Implement the coordinator last**
-
-Once all concepts are implemented and tested in isolation:
-
-> "Read `SYNCHRONIZATIONS.md`. Create `coordinator.py` with one function per SYNC entry. This is the only file allowed to import from multiple concepts."
-
-The agent translates each SYNC entry directly into a function. If an entry is ambiguous, it surfaces now — not mid-implementation.
-
-### The discipline that makes it work
-
-Keep prompts scoped to one concept or one sync at a time. The instinct is to say "build the whole pipeline" — resist it. The framework only pays off if the agent operates within concept boundaries, and it will as long as your prompts respect them too.
-
-### What this buys you
-
-- **Smaller agent tasks**: Each prompt has a clear boundary. The agent isn't holding the whole system in context at once.
-- **Invariants as a safety net**: The agent knows from the spec what must hold after each action. You don't have to restate constraints in every prompt.
-- **Easier debugging**: If something breaks, the concept boundaries tell you exactly where to look.
-- **Safe iteration**: Changing a threshold or adding a downstream effect means updating one SYNC entry and the coordinator — neither concept doc changes.
+This project uses the [Strategic Agentic Coding Framework](https://github.com/Zarif-S/agentic-coding-framework) for documentation structure and AI-agent workflow — a hierarchical doc system (CLAUDE.md / ROADMAP.md / PROJECT_PLAN.md) that keeps AI coding assistants context-efficient across a project. See [`docs/agentic-framework-guide.md`](docs/agentic-framework-guide.md) for a local quickstart guide.
 
 ---
 
-## Advanced Features (Tier 2)
-
-Once you're comfortable with the core framework, explore these optional patterns:
-
-### 1. DOCS.md Index Pattern
-**When to use**: Projects with 10+ documented folders
-- Creates an ASCII navigation tree
-- Quick reference for complex codebases
-- See: [docs/ADVANCED_FEATURES.md#docs-index](docs/ADVANCED_FEATURES.md#docs-index)
-
-### 2. PR Documentation Checklist
-**When to use**: Team collaboration starts
-- Automated reminders to update docs in PRs
-- Reduces documentation drift
-- See: [.github/PULL_REQUEST_TEMPLATE/documentation.md](.github/PULL_REQUEST_TEMPLATE/documentation.md)
-
-### 3. Documentation Debt Tracking
-**When to use**: Fast iteration creates doc gaps
-- Track TODOs in `PROJECT_PLAN.md`
-- Prioritize doc updates alongside features
-- See: [docs/ADVANCED_FEATURES.md#doc-debt-tracking](docs/ADVANCED_FEATURES.md#doc-debt-tracking)
-
-### 4. Conflict Detection Patterns
-**When to use**: Multiple people editing docs
-- Severity levels (🔴 Critical, 🟡 Moderate, 🟢 Minor)
-- Manual checklist for spotting contradictions
-- See: [docs/ADVANCED_FEATURES.md#conflict-detection](docs/ADVANCED_FEATURES.md#conflict-detection)
-
-### 5. Multi-Folder Strategy Guide
-**When to use**: Project structure evolves
-- Heuristics for when to split CLAUDE.md into subfolders
-- Examples of folder size thresholds
-- See: [docs/ADVANCED_FEATURES.md#multi-folder-strategy](docs/ADVANCED_FEATURES.md#multi-folder-strategy)
-
-### 6. Scheduled Retrospectives
-**When to use**: Continuous improvement culture
-- Every 2-3 months review template
-- Questions about doc effectiveness
-- See: [docs/ADVANCED_FEATURES.md#retrospectives](docs/ADVANCED_FEATURES.md#retrospectives)
-
----
-
-## Real-World Example
-
-See the `examples/` folder for a two-concept worked example showing the full framework in action:
-
-| File | What it demonstrates |
-|------|----------------------|
-| `examples/ml-workflow/CLAUDE.md` | Concept spec (state, actions, invariants) for a self-contained MLWorkflow concept |
-| `examples/deployment/CLAUDE.md` | Concept spec for a self-contained Deployment concept |
-| `examples/SYNCHRONIZATIONS.md` | How the two concepts coordinate — without either knowing about the other |
-
-The SYNCHRONIZATIONS.md is the key file to read: it shows what a real sync entry looks like and explains *why* the coordination lives here instead of in either concept's doc.
-
----
-
-## Philosophy & Principles
-
-### 1. Hierarchical Separation of Concerns
-Documentation exists at different altitudes:
-- **Strategic (ROADMAP)**: Where are we going and why?
-- **Tactical (PROJECT_PLAN)**: What are we doing right now?
-- **Architectural (CLAUDE.md)**: How does the system work?
-- **Implementation (Code)**: What does this specific function do?
-
-### 2. Flexible Guidelines, Not Rigid Rules
-The "What Goes Where" table is a guide, not a law. Use your judgment:
-- If repetition aids clarity, repeat
-- If a detail feels important at multiple levels, include it at both
-- Optimize for **findability**, not purity
-
-### 3. Context Efficiency Over Completeness
-AI agents work best with:
-- **Focused context**: 2-5KB of targeted docs beats 50KB of comprehensive docs
-- **Task-oriented navigation**: "What are you trying to do?" not "Here's everything"
-- **Breadcrumbs**: Clear paths between related documents
-
-### 4. No Workflow Interruption
-Documentation should:
-- ✅ Be updated **after** completing a task (batch at task end)
-- ✅ Use severity levels for conflicts (only critical ones interrupt)
-- ❌ **Never** pause development mid-task for doc updates
-- ❌ **Never** enforce strict rules that slow down iteration
-
----
-
-## Contributing
-
-This framework is designed to evolve based on real-world usage. Contributions welcome:
-- Share your adaptations and improvements
-- Report what works (and what doesn't) in your projects
-- Suggest new advanced patterns based on your experience
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-Use this framework freely in your projects, commercial or personal.
-
----
-
-## Future Improvements
-
-This framework is designed to evolve. Potential enhancements being considered:
-
-### 1. Specialized Sub-Agents Support
-
-**Concept**: Documentation patterns for teams using different LLMs for different purposes
-
-**Examples**:
-- Gemini for code reviews
-- Claude Code for coding and implementation
-- OpenAI for brainstorming and ideation
-- Specialized models for data science workflows
-
-**Value**: Guide teams on how to document when different AI agents handle different aspects of development
-
-### 2. Compound Engineering Integration
-
-**Resource**: [Compound Engineering Plugin](https://github.com/EveryInc/compound-engineering-plugin)
-
-**Concept**: Integrate compound engineering principles into the documentation framework
-
-**Value**: Enhanced patterns for building complex systems with clear documentation boundaries
-
-### 3. Automation Tooling
-
-**Validation Script** (`scripts/check_docs.sh`):
-- Detect broken internal links
-- Find inconsistent terminology
-- Verify hierarchical structure
-- Check documentation debt items
-
-**GitHub Actions Workflow**:
-- Automated doc checks on pull requests
-- Link validation in CI/CD
-- Documentation coverage reporting
-
-**Pre-commit Hooks**:
-- Remind developers to update relevant docs
-- Validate markdown formatting
-- Check for placeholder text
-
-**Status**: Focus is on establishing manual patterns first, then automate when pain points are clear.
-
-### 4. Model Context Protocol (MCP) Integration
-
-**Concept**: Integrate Model Context Protocol to enable AI agents to access contextual information more efficiently
-
-**Potential Features**:
-- MCP servers for documentation navigation
-- Context-aware documentation retrieval
-- Standardized interfaces for AI agents to query project structure
-- Dynamic context loading based on agent tasks
-
-**Value**: Reduces token usage and improves AI agent performance by providing only relevant context when needed
-
-### 5. Claude Skills Integration ✅
-
-**Shipped**: Five Claude Code skills are included in `.claude/skills/` and ready to copy into any project:
-
-| Skill | Purpose |
-|-------|---------|
-| `/concept-spec` | Generate a new concept `CLAUDE.md` with state/actions/invariants |
-| `/plan-feature` | Plan a feature and triage doc updates across the hierarchy |
-| `/sync-flow` | Add a SYNC-NNN entry to `SYNCHRONIZATIONS.md` |
-| `/changelog-gen` | Draft `[Unreleased]` changelog entries from recent commits |
-| `/doc-health` | Audit all docs for broken links, stale dates, missing sections |
-
-**Value**: Each skill enforces framework conventions automatically — concepts stay isolated, sync entries stay in SYNCHRONIZATIONS.md, and changelog entries get human-readable descriptions instead of raw commit messages.
-
-### 6. Framework Plugin/Extension
-
-**Concept**: Create a standalone plugin that scaffolds and maintains this documentation structure
-
-**Features**:
-- One-command project initialization with templates
-- Automatic detection of documentation drift
-- Interactive documentation update wizard
-- Integration with popular IDEs and editors
-- Documentation health metrics and dashboards
-
-**Value**: Lower barrier to entry and easier maintenance for teams adopting the framework
-
----
-
-## Acknowledgments
-
-This framework emerged from practical experience using AI coding assistants for coding and optimising documentation during onboarding, particularly when using [Claude Code](https://claude.com/claude-code).
-
-Inspired by the need to maintain clarity and strategic alignment in fast-moving AI-assisted development environments.
-
-**Research**: The philosophy of this framework is supported by research from MIT, notably:
-Meng, E. and Jackson, D. (2025). *What You See Is What It Does: A Structural Pattern for Legible Software*. Available at: https://arxiv.org/abs/2508.14511.
-
-**Contributors**: Thanks to James Algers for contributing.
-
----
-
-**Last Updated**: 2026-03-13
-**Status**: Template v1.1 - Ready for use
-**Feedback**: [GitHub Issues](https://github.com/your-username/agentic-coding-framework/issues)
+**Last Updated**: 2026-07-10 | **Status**: Active development | **Maintainer**: Zarif

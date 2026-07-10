@@ -1,39 +1,35 @@
 # Project Plan - Tactical Execution
 
-## 📍 Breadcrumbs
+## Breadcrumbs
 
 - **New to the project?** → [CLAUDE.md](CLAUDE.md) for setup and overview
 - **Looking for strategic vision?** → [ROADMAP.md](ROADMAP.md)
-- **Looking for implementation details?** → [CLAUDE.md - Task Navigation](CLAUDE.md#-documentation-navigation)
+- **Looking for pipeline handoffs?** → [SYNCHRONIZATIONS.md](SYNCHRONIZATIONS.md)
 - **Looking for completed features?** → [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
 ## Purpose of This Document
 
-**For AI Agents**: Understand current priorities and context before implementing features. You'll create your own task-level breakdown using TodoWrite.
+**For AI Agents**: Understand current priorities and context before implementing features. Use TodoWrite for task-level breakdown within a session.
 
-**For Humans**: High-level status overview bridging ROADMAP strategy to execution tools (GitHub Issues, Jira, etc.).
+**For Humans**: High-level status overview bridging ROADMAP strategy to execution.
 
 **PROJECT_PLAN.md** focuses on **what** and **when**:
 - **What** are we building/doing right now?
 - **When** is this happening? (now / next / later)
-- **Who** is responsible? (optional, useful for delegation)
 
-**This is NOT**:
-- Task-level tracking (GitHub Issues/Jira handle this)
-- Strategic vision (see [ROADMAP.md](ROADMAP.md))
-- Implementation details (see [CLAUDE.md](CLAUDE.md))
+This is NOT task-level tracking or strategic vision — see ROADMAP.md for strategy.
 
-**Timeframe**: Current focus + next 1-2 months, reviewed weekly or biweekly
+**Timeframe**: Current focus + next 1-2 weeks, reviewed at end of each phase.
 
 ---
 
-## Current Focus ([Month Year])
+## Current Focus (Week 1–2, July 2026)
 
-**Theme**: [What we're focused on - e.g., "Baseline Model Development" or "Multi-tenant Foundation"]
+**Theme**: EDA + Baseline Models — ADME dataset
 
-**Strategic Alignment**: Supports [ROADMAP milestone - e.g., "Q1 2025: Establish ML pipeline foundation"]
+**Strategic Alignment**: ROADMAP Phase 1 — *"Understand the ADME dataset and establish a working baseline pipeline"*
 
 ---
 
@@ -41,105 +37,98 @@
 
 ### Now (In Progress)
 
-**1. [Initiative/Feature Name]**
-- **What**: [Brief description of what this is - e.g., "Data preprocessing pipeline with feature engineering"]
-- **Why**: [Business/technical reason - e.g., "Required for baseline model training"]
-- **Who**: [Team/Person/Agent - optional, e.g., "Data team" or "TBD"]
-- **Status**: [Phase or % - e.g., "70% complete - validation in progress"]
-- **Tracking**: [GitHub Issues #45-52](link) or [Jira Epic](link)
-- **Next milestone**: [What's coming next - e.g., "Complete feature validation by end of month"]
-
-**2. [Initiative/Feature Name]**
-- **What**: [Description]
-- **Why**: [Reason]
-- **Who**: [Assignee - optional]
-- **Status**: [Status]
-- **Tracking**: [Link to detailed work]
-- **Blocker**: [If applicable - e.g., "Waiting on dataset access approval"]
+**1. Exploratory Data Analysis (ADME)**
+- **What**: Distribution plots for all 6 endpoints, SMILES validity check, missing value report, endpoint correlation matrix, summary statistics
+- **Why**: Required before any cleaning or modelling decisions; gates SYNC-002 (cleaning strategy) and SYNC-003 (split strategy)
+- **Status**: Not yet started
+- **Next milestone**: Complete `notebooks/01_eda_adme.ipynb`; decide cleaning strategy (SYNC-002 outcome)
 
 ### Next (Coming Soon)
 
-**1. [Initiative/Feature Name]**
-- **What**: [Description]
-- **Why**: [Reason]
-- **Who**: [Assignee - optional]
-- **Depends on**: [Prerequisites - e.g., "Completing data pipeline work above"]
-- **Target start**: [Timeframe - e.g., "Early February" or "After current sprint"]
+**1. Data Cleaning (ADME)**
+- **What**: Handle missing values, remove invalid SMILES, standardize structures
+- **Why**: Clean data is required before featurization and model training
+- **Depends on**: EDA outcomes (SYNC-002 TBD — strategy not yet decided)
 
-**2. [Initiative/Feature Name]**
-- **What**: [Description]
-- **Why**: [Reason]
-- **Decision needed**: [If applicable - e.g., "Model architecture selection - awaiting experiments"]
+**2. Train/Test Splitting (ADME)**
+- **What**: Define train/test split strategy for ADME
+- **Why**: Must be fixed before baseline model evaluation to avoid data leakage
+- **Depends on**: EDA complete (SYNC-003 TBD — strategy not yet decided)
+- **Decision needed**: Random split confirmed for Phase 1 baseline; revisit in Phase 3 for PDE10A
+
+**3. Featurization (ADME)**
+- **What**: Convert SMILES to ML-ready features
+- **Why**: Required input for all ML models
+- **Depends on**: EDA complete
+- **Decision**: ECFP4 confirmed primary; `src/features.py` implements both Morgan fingerprints and RDKit 2D descriptors; swap is trivial
+
+**4. Baseline Models (ADME)**
+- **What**: Train Linear Regression, Random Forest, XGBoost, LightGBM on all 6 ADME endpoints; evaluate with R², RMSE, MSE; predicted-vs-actual plots
+- **Why**: Exit criterion for Phase 1; gates Phase 2 learning curve experiments
+- **Depends on**: Featurization complete
 
 ### Later (On Deck)
 
-- [High-level item 1 - e.g., "Model deployment pipeline"]
-- [High-level item 2 - e.g., "A/B testing framework"]
+- **Phase 2** (Week 3): Learning curves / data quantity experiments on ADME
+- **Phase 3** (Week 4): PDE10A EDA + baseline models + 7-way split strategy comparison
+- **Phase 4** (Weeks 5–6): Label noise injection + robustness analysis + writeup
+- **TBD**: Deep learning models (ChemProp, DeepChem, Tx-Gemma) — review after Phase 2 based on time remaining
 
 ---
 
-## Active Blockers
+## Active Decisions Pending
 
-**🚧 [Blocker Name - e.g., "Production Dataset Access"]**
-- **Blocks**: [What's affected - e.g., "Model training with real data"]
-- **Owner**: [Who's unblocking - e.g., "Compliance team"]
-- **ETA**: [When resolved - e.g., "February 1"]
-- **Workaround**: [What we're doing meanwhile - e.g., "Training on synthetic data"]
-
-**🚧 [Blocker Name]**
-- **Blocks**: [Impact]
-- **Owner**: [Responsible party]
-- **ETA**: [Timeline]
+**Deep learning models**
+- **Blocks**: Nothing yet — Phase 4 consideration
+- **Owner**: Zarif to investigate Tx-Gemma dataset size suitability
+- **ETA**: End of Phase 2 (Week 3)
 
 ---
 
 ## Recently Completed
 
-**✅ [Accomplishment - e.g., "Exploratory Data Analysis"]**
-- **Completed**: [When - e.g., "Mid-January"]
-- **Outcome**: [What was delivered - e.g., "Identified 15 key features, documented in notebook"]
-- **Documentation**: [Where documented - e.g., "notebooks/eda/initial_analysis.ipynb" or [CHANGELOG.md](CHANGELOG.md)]
+**✅ Environment Setup**
+- **Completed**: Week 1 (early July 2026)
+- **Outcome**: Python 3.10 env pinned via uv (pyproject.toml + uv.lock); all deps installable with `uv sync`
 
-**✅ [Accomplishment]**
-- **Completed**: [When]
-- **Outcome**: [What was delivered]
-- **Documentation**: [Link]
+**✅ Project Scaffolding**
+- **Completed**: Week 1 (early July 2026)
+- **Outcome**: Folder structure created (src/, notebooks/, tests/, data/raw/, data/processed/)
+
+**✅ Data Acquisition**
+- **Completed**: Week 1 (early July 2026)
+- **Outcome**: ADME dataset (3521 compounds, 6 endpoints) and PDE10A dataset in data/raw/
+
+**✅ Documentation Foundation**
+- **Completed**: Week 1 (early July 2026)
+- **Outcome**: CLAUDE.md, ROADMAP.md, SYNCHRONIZATIONS.md, LESSONS_LEARNED.md all populated
 
 ---
 
 ## Key Links
 
-**Detailed Task Tracking**:
-- [GitHub Project Board](link)
-- [Jira Sprint](link)
-- [Linear Cycle](link)
-
-**Progress & Experiments** (if applicable):
-- [MLflow Dashboard](link)
-- [Weights & Biases](link)
-- [Experiment Tracking Doc](link)
-
 **Related Documentation**:
-- [ROADMAP.md](ROADMAP.md) - Strategic vision
-- [CLAUDE.md](CLAUDE.md) - Implementation guidance
-- [CHANGELOG.md](CHANGELOG.md) - Feature history
+- [ROADMAP.md](ROADMAP.md) — Strategic vision and phased plan
+- [SYNCHRONIZATIONS.md](SYNCHRONIZATIONS.md) — Cross-step decision handoffs (SYNC-001 through SYNC-009)
+- [CLAUDE.md](CLAUDE.md) — Environment setup and coding conventions
+- [CHANGELOG.md](CHANGELOG.md) — Feature history
 
 ---
 
 ## For AI Agents
 
-When you're asked to implement a feature:
+When asked to implement something:
 
-1. **Read this document** to understand current focus and alignment
-2. **Check blockers** to avoid working on blocked items
-3. **Use TodoWrite** to create your own task-level breakdown
-4. **Work incrementally** through your tasks, marking complete as you go
-5. **Update documentation** when your work is done (CHANGELOG, CLAUDE.md if architecture changed)
+1. **Read this document** to understand current focus
+2. **Check "Active Decisions Pending"** — do not implement featurization or splitting without those being resolved
+3. **Check SYNCHRONIZATIONS.md** for relevant SYNC gates before starting work that depends on prior decisions
+4. **Use TodoWrite** for task-level breakdown within your session
+5. **Update this document and CHANGELOG.md** when an initiative completes
 
-Your task lists are ephemeral (conversation-level). This document stays high-level.
+Task lists are ephemeral (conversation-level). This document stays high-level.
 
 ---
 
-**Last Updated**: [YYYY-MM-DD]
-**Review Cadence**: [e.g., "Weekly on Mondays" or "Biweekly"]
-**Current Period**: [e.g., "January 2025" or "Sprint 12"]
+**Last Updated**: 2026-07-10
+**Review Cadence**: End of each phase (every 1–2 weeks)
+**Current Period**: Week 1–2, Phase 1
