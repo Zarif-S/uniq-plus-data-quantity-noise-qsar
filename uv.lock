@@ -1077,7 +1077,7 @@ wheels = [
 ]
 
 [[package]]
-name = "uniq-plus"
+name = "uniq-plus-data-quantity-noise-qsar"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

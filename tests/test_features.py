@@ -19,10 +19,14 @@ def test_morgan_fp_shape_multiple():
     assert fps.shape == (2, 2048)
 
 
-def test_morgan_fp_invalid_smiles_returns_zeros():
-    fps = morgan_fingerprints(["not_valid"])
-    assert fps.shape == (1, 2048)
-    assert fps[0].sum() == 0
+def test_morgan_fp_invalid_smiles_raises_value_error():
+    with pytest.raises(ValueError, match="Invalid SMILES"):
+        morgan_fingerprints(["not_valid"])
+
+
+def test_rdkit_descriptors_invalid_smiles_raises_value_error():
+    with pytest.raises(ValueError, match="Invalid SMILES"):
+        rdkit_descriptors(["not_valid"])
 
 
 def test_rdkit_descriptors_columns():
