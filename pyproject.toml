@@ -1,5 +1,5 @@
 [project]
-name = "uniq-plus"
+name = "uniq-plus-data-quantity-noise-qsar"
 version = "0.1.0"
 description = "UNIQ+: Data Quantity, Noise & ML in Drug Discovery QSAR — ADME property prediction experiments"
 requires-python = ">=3.10,<3.11"
