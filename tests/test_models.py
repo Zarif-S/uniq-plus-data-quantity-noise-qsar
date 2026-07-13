@@ -43,3 +43,15 @@ def test_get_baseline_models_returns_fresh_instances():
     m1 = get_baseline_models()
     m2 = get_baseline_models()
     assert m1["RandomForest"] is not m2["RandomForest"]
+
+
+def test_evaluate_model_accepts_precomputed_y_pred():
+    X = np.array([[1], [2], [3]])
+    y = np.array([1.0, 2.0, 3.0])
+    from sklearn.linear_model import LinearRegression
+    model = LinearRegression().fit(X, y)
+    y_pred = model.predict(X)
+    result_precomputed = evaluate_model(model, X, y, y_pred=y_pred)
+    result_default = evaluate_model(model, X, y)
+    assert abs(result_precomputed["R2"] - result_default["R2"]) < 1e-9
+    assert abs(result_precomputed["RMSE"] - result_default["RMSE"]) < 1e-9

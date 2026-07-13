@@ -28,9 +28,13 @@ def get_baseline_models():
     }
 
 
-def evaluate_model(model, X_test, y_test):
-    """Return {R2, RMSE, MSE} for a fitted model evaluated on test data."""
-    y_pred = model.predict(X_test)
+def evaluate_model(model, X_test, y_test, y_pred=None):
+    """Return {R2, RMSE, MSE} for a fitted model evaluated on test data.
+
+    Pass y_pred to reuse already-computed predictions and skip a redundant predict call.
+    """
+    if y_pred is None:
+        y_pred = model.predict(X_test)
     mse = mean_squared_error(y_test, y_pred) # mse calculated but not returned/printed in the notebook as of yet
     return {
         "R2": r2_score(y_test, y_pred),
