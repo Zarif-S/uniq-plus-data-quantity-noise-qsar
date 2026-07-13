@@ -21,7 +21,7 @@ This is NOT a task list — see [PROJECT_PLAN.md](PROJECT_PLAN.md) for current s
 
 ## Vision
 
-**UNIQ+** aims to quantify how dataset size and label noise affect ML model performance for molecular property prediction (QSAR), using two open-source drug discovery datasets. Findings should be reproducible and documented well enough to support a methods section if taken to publication.
+**UNIQ+ 6 week research project** aims to quantify how dataset size and label noise affect ML model performance for molecular property prediction (QSAR), using two+ open-source drug discovery datasets. Findings should be reproducible and documented well enough to support a methods section if taken to publication.
 
 **Success looks like**:
 - Learning curves showing how R², RMSE, and MSE degrade as training set size decreases — for each endpoint and model
@@ -113,7 +113,7 @@ This is NOT a task list — see [PROJECT_PLAN.md](PROJECT_PLAN.md) for current s
 
 **Future work**: If extended to publication, implement PrO for a linear QSAR model and use PrO uncertainty spread as a noise diagnostic — a novel contribution to both Bayesian ML and computational drug discovery. See [DECISIONS.md](DECISIONS.md) ADR-001 for full reasoning.
 
-**Review when**: If project extends beyond 6 weeks or targets publication.
+**Review when**: If project extends beyond 6 weeks.
 
 ### Deep learning models (ChemProp / DeepChem / Tx-Gemma): pending
 
