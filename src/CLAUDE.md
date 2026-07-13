@@ -11,6 +11,8 @@ Reusable Python modules imported by notebooks. Each module is a subpackage with 
 | `eda` | Quality checks on raw molecular data (SMILES validity, missing values) | [eda/CLAUDE.md](eda/CLAUDE.md) |
 | `features` | SMILES → ML-ready features (RDKit descriptors, fingerprints) | [features/CLAUDE.md](features/CLAUDE.md) |
 | `plotting` | Reusable visualisations (endpoint distributions, learning curves) | [plotting/CLAUDE.md](plotting/CLAUDE.md) |
+| `cleaning` | Per-endpoint NaN filtering and IQR outlier detection | [cleaning/CLAUDE.md](cleaning/CLAUDE.md) |
+| `models` | Baseline model factory and uniform evaluation utilities | [models/CLAUDE.md](models/CLAUDE.md) |
 
 ---
 
@@ -23,10 +25,16 @@ raw data
 [eda] — SMILES validity + missing value reports
    │
    ▼
+[cleaning] — per-endpoint NaN filter + IQR outlier flagging
+   │
+   ▼
 [features] — SMILES → fingerprints / descriptors
    │
    ▼
-[plotting] — visualise distributions, model results
+[models] — fit baselines, evaluate (R², RMSE, MSE)
+   │
+   ▼
+[plotting] — visualise distributions, predicted vs actual
 ```
 
 ---

@@ -38,7 +38,9 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 **Condition**: Invalid SMILES or missing endpoint values are present in the profiling report
 
 **Effects**:
-- `Data.clean(dataframe, strategy=TBD)` — cleaning strategy (drop / impute / flag) to be decided once EDA results are reviewed
+- `Cleaning.filter_endpoint(dataframe, endpoint_col)` — per-endpoint NaN filtering; each model trains only on rows with a non-NaN value for its target endpoint
+
+**Decision** (2026-07-13): Per-endpoint filtering. Complete-case filtering rejected (retains only ~180 rows due to PPB 94–95% missingness). Imputation rejected (missing values are structural — compounds were never sent to assay, not randomly missing). See ADR-002 in DECISIONS.md.
 
 **Rationale**: Cleaning decisions depend on what EDA reveals — the strategy cannot be hardcoded in advance. This sync makes the dependency explicit and forces a conscious decision before proceeding to splitting.
 
@@ -78,9 +80,9 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 **Condition**: Always — `X_train`, `y_train`, `X_test`, `y_test` all present
 
 **Effects**:
-- `Model.train(X_train, y_train, model_name)` → fitted model, where `model_name` ∈ {`linear`, `rf`, `xgb`, `lgb`}
+- `Model.train(X_train, y_train, model_name)` → fitted model, where `model_name` ∈ {`LinearRegression`, `BayesianRidge`, `RandomForest`, `XGBoost`, `LightGBM`}
 
-**Rationale**: Model training can only begin once both splits are featurized and isolated. Keeping this as an explicit handoff prevents premature training on un-split or un-featurized data. Linear Regression is included as the interpretable baseline before tree-based models.
+**Rationale**: Model training can only begin once both splits are featurized and isolated. Keeping this as an explicit handoff prevents premature training on un-split or un-featurized data. BayesianRidge is included as the Bayesian baseline (see ADR-001); LinearRegression as the interpretable baseline.
 
 ---
 
@@ -129,6 +131,6 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 
 ---
 
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-13
 
 **Related**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [CLAUDE.md](CLAUDE.md)

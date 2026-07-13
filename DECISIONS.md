@@ -75,4 +75,73 @@ This would constitute a novel contribution to both Bayesian ML and computational
 
 ---
 
+## ADR-002 — Per-Endpoint Filtering Over Imputation for Missing ADME Values
+
+**Date**: 2026-07-13
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+The ADME dataset has highly variable missingness across its 6 endpoints:
+- HLM: 12.3% missing, RLM: 13.3% missing
+- MDR1: 25.0% missing, SOLUBILITY: 38.3% missing
+- PPB_HUMAN: 94.5% missing, PPB_RAT: 95.2% missing
+
+Before training baseline models, a strategy for handling NaN values was required. Two main options were considered: imputation and per-endpoint filtering.
+
+---
+
+### Alternatives Considered
+
+**Complete-case filtering** (drop any row missing any endpoint): retains only ~180 rows (~5% of the dataset) because PPB missingness is near-total. Discards the vast majority of valid HLM/RLM/MDR1/SOLUBILITY measurements. Rejected.
+
+**Imputation** (mean, median, or k-NN fill): fills NaN values before training a single joint model across all endpoints. Rejected — see reasoning below.
+
+**Per-endpoint filtering** (train each model independently on its own non-NaN rows): each of the 6 models sees only compounds with a measured value for its target endpoint. Accepted.
+
+---
+
+### Why Imputation Is Incorrect Here
+
+1. **Missing values are structural, not random.** A NaN in HLM means the compound was never sent to the human microsome assay — not that it has an average clearance. Imputing would be fabricating measurements.
+
+2. **Missingness pattern is batch-driven.** HLM and RLM are measured together; PPB_HUMAN and PPB_RAT are measured together. These are separate experimental batches, not random omissions. Imputing across batches would introduce systematic cross-assay contamination.
+
+3. **Log-transformed biological values have meaningful scale.** Mean imputation on log-clearance would bias the imputed value toward the centre of the assay range, which is not scientifically meaningful for untested compounds.
+
+4. **Independent endpoints in ADME.** ADME endpoints have distinct chemical drivers — lipophilicity dominates PPB, metabolic stability dominates HLM/RLM, polar surface area dominates MDR1. A model for HLM has no principled basis for filling PPB values, even with cross-endpoint correlation.
+
+---
+
+### Decision
+
+Train 6 independent models, one per endpoint. Each model is trained and evaluated exclusively on compounds with a non-NaN value for that endpoint. Effective training set sizes:
+
+| Endpoint | N for model |
+|----------|-------------|
+| HLM      | ~3087       |
+| RLM      | ~3054       |
+| MDR1     | ~2642       |
+| SOL      | ~2173       |
+| PPB_H    | ~194        |
+| PPB_R    | ~168        |
+
+PPB models (~170–190 samples) will have wider uncertainty than HLM/RLM models (~3000 samples). This is an honest reflection of the experimental reality, not a limitation to be papered over with imputation.
+
+---
+
+### Implications for Later Phases
+
+- **Phase 2 (learning curves)**: each endpoint's learning curve starts from its own N, not a shared pool.
+- **Phase 4 (noise injection)**: noise is added per-endpoint to that endpoint's non-NaN subset only.
+
+---
+
+---
+
+**Last Updated**: 2026-07-13
+
 *Add new ADRs above this line, numbered sequentially.*

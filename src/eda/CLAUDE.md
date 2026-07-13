@@ -1,66 +1,76 @@
-# src/eda — EDA Module
+# EDA — UNIQ+
 
-**Purpose**: Validate and inspect raw molecular datasets before any cleaning or modelling decisions.
+## Breadcrumbs
+- **Project setup** → [Root CLAUDE.md](../../CLAUDE.md)
+- **Strategic context** → [ROADMAP.md](../../ROADMAP.md)
+- **Current sprint** → [PROJECT_PLAN.md](../../PROJECT_PLAN.md)
+- **Cross-module flows** → [SYNCHRONIZATIONS.md](../../SYNCHRONIZATIONS.md)
+- **src overview** → [../CLAUDE.md](../CLAUDE.md)
 
-**State**: Stateless — operates on DataFrames passed in, returns new objects, never mutates input.
-
----
-
-## Public API
-
-| Function | Signature | Returns |
-|----------|-----------|---------|
-| `smiles_validity_report` | `(df, smiles_col="SMILES") → dict` | `{valid_count, invalid_count, invalid_indices}` |
-| `missing_value_report` | `(df, endpoint_cols) → DataFrame` | DataFrame with `n_missing`, `pct_missing` per endpoint column |
+> **Isolation rule**: This file describes only what this concept owns. Any coordination with other concepts belongs in SYNCHRONIZATIONS.md — not here.
 
 ---
 
-## Invariants
+## Concept Specification
 
-- Input DataFrame is never modified
-- Applied to raw data only (before any cleaning)
-- Returns are reporting objects only — no rows are dropped or filtered
-- Invalid SMILES are counted and indexed, not silently skipped
+**Purpose**: Validate and profile raw molecular datasets so cleaning and modelling decisions are grounded in observed data quality.
+
+### State
+
+| Field | Type | Description |
+|-------|------|-------------|
+| *(stateless)* | — | All functions operate on DataFrames passed in and return new objects; no module-level state is held |
+
+### Actions
+
+| Action | Signature | Description |
+|--------|-----------|-------------|
+| `smiles_validity_report` | `(df, smiles_col="SMILES") → dict` | Returns `{valid_count, invalid_count, invalid_indices}` for all SMILES in the column |
+| `missing_value_report` | `(df, endpoint_cols) → DataFrame` | Returns DataFrame of `n_missing` and `pct_missing` per endpoint column |
+
+### Invariants
+
+- Input DataFrame is never modified — both functions are pure reads
+- Applied to raw data only — EDA must run before any cleaning or filtering
+- `smiles_validity_report` counts and indexes invalid SMILES; it never silently skips them
+- `missing_value_report` returns one row per endpoint; index matches `endpoint_cols` order
+- Neither function drops, fills, or transforms any data — outputs are reporting objects only
 
 ---
 
 ## Architecture
 
 ```
-raw CSV → DataFrame → smiles_validity_report  → report dict
-                    → missing_value_report    → report DataFrame
+raw CSV → DataFrame
+              │
+              ├──→ smiles_validity_report(df)  → {valid_count, invalid_count, invalid_indices}
+              │
+              └──→ missing_value_report(df, endpoint_cols)
+                        → DataFrame (n_missing, pct_missing per endpoint)
 ```
 
 ---
 
 ## Common Tasks
 
-**Run SMILES validity check:**
+### Run SMILES validity check
+
 ```python
 from src.eda import smiles_validity_report
+
 report = smiles_validity_report(df, smiles_col="SMILES")
 print(report["invalid_count"], "invalid SMILES at indices:", report["invalid_indices"])
 ```
 
-**Run missing value report:**
+### Run missing value report
+
 ```python
 from src.eda import missing_value_report
-endpoint_cols = ["HLM", "RLM", "MDR1", "Sol", "PPB_h", "PPB_r"]
-report = missing_value_report(df, endpoint_cols)
+
+report = missing_value_report(df, ENDPOINT_COLS)
+display(report)  # shows n_missing and pct_missing per endpoint
 ```
 
 ---
 
-## Known Issues
-
-None. Both functions are simple and tested implicitly in the notebook.
-
----
-
-## Navigation
-
-- Root CLAUDE.md: [../../CLAUDE.md](../../CLAUDE.md)
-- ROADMAP: [../../ROADMAP.md](../../ROADMAP.md)
-- PROJECT_PLAN: [../../PROJECT_PLAN.md](../../PROJECT_PLAN.md)
-- SYNCHRONIZATIONS: [../../SYNCHRONIZATIONS.md](../../SYNCHRONIZATIONS.md)
-- src overview: [../CLAUDE.md](../CLAUDE.md)
+**Last Updated**: 2026-07-13 | **Status**: Active | **Maintainer**: Zarif

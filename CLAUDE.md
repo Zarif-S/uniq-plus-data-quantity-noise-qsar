@@ -39,6 +39,8 @@
 │ Cross-concept event flows        → SYNCHRONIZATIONS.md        │
 ├────────────────────────────────────────────────────────────────┤
 │ src/ modules (EDA, Features, Plotting) → src/CLAUDE.md        │
+│ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md│
+│ Models module (baselines, evaluation)  → src/models/CLAUDE.md  │
 ├────────────────────────────────────────────────────────────────┤
 │ All logged decisions (ADR)       → DECISIONS.md               │
 │ Process & technical lessons      → LESSONS_LEARNED.md         │
@@ -189,6 +191,6 @@ Your closing message is for someone who saw none of your working steps. Lead wit
 
 ---
 
-**Last Updated**: 2026-07-09 | **Status**: Active development | **Maintainers**: Zarif
+**Last Updated**: 2026-07-13 | **Status**: Active development | **Maintainers**: Zarif
 
 **Docs**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [LESSONS_LEARNED.md](LESSONS_LEARNED.md)

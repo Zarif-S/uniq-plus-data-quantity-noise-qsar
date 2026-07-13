@@ -37,42 +37,34 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 
 ### Now (In Progress)
 
-**1. Exploratory Data Analysis (ADME)**
-- **What**: Distribution plots for all 6 endpoints, SMILES validity check, missing value report, endpoint correlation matrix, summary statistics
-- **Why**: Required before any cleaning or modelling decisions; gates SYNC-002 (cleaning strategy) and SYNC-003 (split strategy)
+**Phase 2 — PDE10A EDA + Baseline Models**
+- **What**: EDA on PDE10A dataset; baseline models across all 7 split strategies (temporal 2011–2013, chemotype-based, random); split strategy comparison
+- **Why**: Completing both dataset baselines before designing experiments gives supervisors a full picture; split strategy decisions (which to use for learning curves, noise injection) are better made with PDE10A baselines in hand
 - **Status**: Not yet started
-- **Next milestone**: Complete `notebooks/01_eda_adme.ipynb`; decide cleaning strategy (SYNC-002 outcome)
+- **Next milestone**: `notebooks/02_eda_baseline_pde10a.ipynb`
 
-### Next (Coming Soon)
+### Recently Completed (Phase 1)
 
-**1. Data Cleaning (ADME)**
-- **What**: Handle missing values, remove invalid SMILES, standardize structures
-- **Why**: Clean data is required before featurization and model training
-- **Depends on**: EDA outcomes (SYNC-002 TBD — strategy not yet decided)
+**✅ EDA (ADME)** — `notebooks/01_adme_eda_baseline.ipynb` Sections 1.1–1.10
+- SMILES validity (100% valid), duplicate check (0), missing value report, outlier detection (3σ + IQR), distributions, correlations, chemical space (Lipinski Ro5)
 
-**2. Train/Test Splitting (ADME)**
-- **What**: Define train/test split strategy for ADME
-- **Why**: Must be fixed before baseline model evaluation to avoid data leakage
-- **Depends on**: EDA complete (SYNC-003 TBD — strategy not yet decided)
-- **Decision needed**: Random split confirmed for Phase 1 baseline; revisit in Phase 3 for PDE10A
+**✅ Data Cleaning (ADME)** — Sections 1.11–1.12
+- Strategy: per-endpoint NaN filtering (ADR-002); IQR 1.5× outlier flagging (flag-only); effective N table per endpoint
 
-**3. Featurization (ADME)**
-- **What**: Convert SMILES to ML-ready features
-- **Why**: Required input for all ML models
-- **Depends on**: EDA complete
-- **Decision**: ECFP4 confirmed primary; `src/features.py` implements both Morgan fingerprints and RDKit 2D descriptors; swap is trivial
+**✅ Featurization (ADME)** — Section 2.1
+- ECFP4 Morgan fingerprints (radius=2, 2048 bits) via `src/features.morgan_fingerprints`; per-endpoint filtered subsets
 
-**4. Baseline Models (ADME)**
-- **What**: Train Linear Regression, Random Forest, XGBoost, LightGBM on all 6 ADME endpoints; evaluate with R², RMSE, MSE; predicted-vs-actual plots
-- **Why**: Exit criterion for Phase 1; gates Phase 2 learning curve experiments
-- **Depends on**: Featurization complete
+**✅ Train/Test Split** — Section 2.2
+- 80/20 random split per endpoint, seed=42
+
+**✅ Baseline Models (ADME)** — Sections 2.3–2.5
+- 5 models × 6 endpoints: LinearRegression, BayesianRidge, RandomForest, XGBoost, LightGBM
+- Metrics: R², RMSE; results table + predicted vs actual plots
 
 ### Later (On Deck)
 
-- **Phase 2** (Week 3): Learning curves / data quantity experiments on ADME
-- **Phase 3** (Week 4): PDE10A EDA + baseline models + 7-way split strategy comparison
-- **Phase 4** (Weeks 5–6): Label noise injection + robustness analysis + writeup
-- **TBD**: Deep learning models (ChemProp, DeepChem, Tx-Gemma) — review after Phase 2 based on time remaining
+- **Phase 3** (Weeks 4–6): Learning curves + noise injection — scope and dataset coverage to be agreed with supervisors at Phase 2 review
+- **TBD**: Deep learning models (ChemProp, DeepChem) — review after Phase 2 based on time remaining
 
 ---
 
@@ -80,7 +72,7 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 
 **Deep learning models**
 - **Blocks**: Nothing yet — Phase 4 consideration
-- **Owner**: Zarif to investigate Tx-Gemma dataset size suitability
+- **Owner**: Zarif to investigate ChemProp/DeepChem/ Tx-Gemma inclusion
 - **ETA**: End of Phase 2 (Week 3)
 
 ---
@@ -129,6 +121,6 @@ Task lists are ephemeral (conversation-level). This document stays high-level.
 
 ---
 
-**Last Updated**: 2026-07-10
+**Last Updated**: 2026-07-13
 **Review Cadence**: End of each phase (every 1–2 weeks)
-**Current Period**: Week 1–2, Phase 1
+**Current Period**: Week 2–3, Phase 2

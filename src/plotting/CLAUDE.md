@@ -24,6 +24,7 @@ Stateless — all functions accept DataFrames and return Figure objects; no modu
 | Action | Signature | Description |
 |--------|-----------|-------------|
 | `endpoint_distributions` | `(df, endpoint_cols, figsize=(14, 8)) → Figure` | Histogram + KDE grid for each endpoint column; grid dimensions computed from number of columns |
+| `pred_vs_actual_grid` | `(preds_dict, title="", figsize=None) → Figure` | Scatter grid of predicted vs actual per model; `preds_dict` is `{model_name: (y_test, y_pred)}`; annotates each panel with R² |
 
 ### Invariants
 

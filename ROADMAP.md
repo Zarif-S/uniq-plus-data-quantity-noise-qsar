@@ -48,42 +48,34 @@ This is NOT a task list — see [PROJECT_PLAN.md](PROJECT_PLAN.md) for current s
 
 ---
 
-### Phase 2 — Week 3: Data Quantity Experiments (ADME)
+### Phase 2 — Week 3: PDE10A Dataset + Split Strategy Comparison
 
-**Goal**: Quantify the effect of training set size on model performance.
-
-**Initiatives**:
-1. **Learning curves** — subsample training set at increasing fractions; evaluate on fixed test set
-2. **Analysis** — identify at what training size performance plateaus or degrades significantly per endpoint
-
-**Exit criteria**: Learning curve plots for each ADME endpoint × model combination.
-
----
-
-### Phase 3 — Week 4: PDE10A Dataset + Split Strategy Comparison
-
-**Goal**: Introduce the PDE10A dataset and investigate how split strategy affects reported performance.
+**Goal**: Establish a complete baseline picture across both datasets before designing experiments.
 
 **Initiatives**:
-1. **EDA on PDE10A** — pIC50 distribution, compound diversity, temporal coverage
-2. **Baseline models on PDE10A** — same model set, all 7 split strategies (temporal 2011–2013, chemotype-based, random)
+1. **EDA on PDE10A** — pIC50 distribution, compound diversity, temporal coverage across splits
+2. **Baseline models on PDE10A** — same 5-model set, all 7 split strategies (temporal 2011–2013, chemotype-based, random)
 3. **Split strategy comparison** — how much does the choice of split inflate or deflate reported R²/RMSE?
+
+**Rationale for reordering**: Having baselines for both datasets before designing experiments gives supervisors a complete picture. Learning curve and noise injection decisions (fractions, noise types, which datasets) are better made once PDE10A's data distribution, effective N per split, and baseline R² are known.
 
 **Exit criteria**: Performance comparison across 7 split strategies documented; cross-dataset comparison with ADME baselines noted.
 
 ---
 
-### Phase 4 — Weeks 5–6: Noise Injection + Analysis + Writeup
+### Phase 3 — Weeks 4–6: Experiments + Writeup
 
-**Goal**: Quantify the effect of label noise on model performance; consolidate findings.
+**Goal**: Quantify the effects of data quantity and label noise; scope agreed with supervisors after Phase 2.
 
-**Initiatives**:
-1. **Noise injection** — Gaussian noise and label shuffle at increasing fractions on both datasets
-2. **Robustness analysis** — at what noise level does each model break down? Are some models more noise-tolerant?
-3. **Final analysis** — cross-cutting findings: does dataset size interact with noise tolerance?
+**Initiatives** (to be confirmed with supervisors):
+1. **Learning curves** — subsample training sets at increasing fractions; evaluate on fixed test set; identify where performance plateaus per endpoint and model
+2. **Noise injection** — Gaussian noise and label shuffle at increasing fractions; robustness analysis across models
+3. **Cross-cutting analysis** — does dataset size interact with noise tolerance? Does split strategy affect noise robustness?
 4. **Writeup** — clean notebooks, figures, summary of key results
 
-**Exit criteria**: Noise experiments complete on at least ADME; findings summarised in a results notebook.
+**Note**: Whether learning curves and noise injection are applied to ADME only, PDE10A only, or both — and whether they run in parallel — will be decided with supervisors at the Phase 2 review. PDE10A learning curves across 7 split strategies would address the interaction between data quantity and split choice, which is a scientifically strong extension.
+
+**Exit criteria**: Experiments complete on at least ADME; findings summarised in a results notebook.
 
 ---
 
@@ -123,7 +115,7 @@ This is NOT a task list — see [PROJECT_PLAN.md](PROJECT_PLAN.md) for current s
 
 ---
 
-**Last Updated**: 2026-07-10
-**Next Review**: End of Phase 1 (Week 2)
+**Last Updated**: 2026-07-13
+**Next Review**: End of Phase 2 (Week 3) — supervisor review to confirm experiment scope
 
 **Related**: [PROJECT_PLAN.md](PROJECT_PLAN.md) · [SYNCHRONIZATIONS.md](SYNCHRONIZATIONS.md) · [CLAUDE.md](CLAUDE.md) · [CHANGELOG.md](CHANGELOG.md)
