@@ -38,3 +38,7 @@ coverage/
 # Cache directories
 .cache/
 .pytest_cache/
+.ruff_cache/
+
+# Python virtual environment
+.venv/

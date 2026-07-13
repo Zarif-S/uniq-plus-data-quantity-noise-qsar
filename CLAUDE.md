@@ -41,6 +41,7 @@
 │ src/ modules (EDA, Features, Plotting) → src/CLAUDE.md        │
 │ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md│
 │ Models module (baselines, evaluation)  → src/models/CLAUDE.md  │
+│ Splitting module (PDE10A 7 strategies) → src/splitting/CLAUDE.md│
 ├────────────────────────────────────────────────────────────────┤
 │ All logged decisions (ADR)       → DECISIONS.md               │
 │ Process & technical lessons      → LESSONS_LEARNED.md         │

@@ -100,6 +100,21 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 
 ---
 
+### [SYNC-007] Pre-defined split columns bypass split generation for PDE10A
+
+**Trigger**: `Cleaning.filter_endpoint(df, "pic50")` → cleaned PDE10A DataFrame
+
+**Condition**: The cleaned DataFrame contains one or more columns from `Splitting.SPLIT_COLS` (i.e., it is PDE10A data with pre-assigned split labels)
+
+**Effects**:
+- For each `split_col` in `Splitting.SPLIT_COLS`: `Splitting.get_split(df, split_col)` → `(train_df, test_df)`
+- The loop over split columns produces 7 independent `(train_df, test_df)` pairs, each fed into SYNC-004 → SYNC-006 separately
+- `val` rows are discarded by `get_split` and never reach featurization or model training
+
+**Rationale**: PDE10A splits encode temporal, chemotype, and random strategies pre-assigned by the dataset authors — generating splits with sklearn would destroy this scientific structure. `Cleaning` must remain ignorant of how splits will be applied; `Splitting` must remain ignorant of why the labels are pre-defined. This SYNC makes explicit that the Cleaning→Splitting handoff uses column-filter semantics (not split generation) when `SPLIT_COLS` columns are present, and that the downstream pipeline runs independently for each of the 7 strategies. SYNC-003 (random split generation) applies to ADME only; this entry applies to PDE10A only.
+
+---
+
 ## Reference
 
 ### Pipeline stage concepts
@@ -112,6 +127,7 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 | `Featurization` | SMILES → fingerprints/descriptors; fit on train only |
 | `Model` | Training and cross-validation of RF/XGB/LGB models |
 | `Results` | Metrics, predicted vs actual plots, learning curves |
+| `Splitting` | Train/test extraction from pre-defined CSV split columns (PDE10A); random split generation (ADME, inline) |
 | `Noise` | Label noise injection (Phase 2 — not yet active) |
 
 ### What belongs here vs. inside a concept
@@ -131,6 +147,6 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 
 ---
 
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-13 (SYNC-007 added)
 
 **Related**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [CLAUDE.md](CLAUDE.md)

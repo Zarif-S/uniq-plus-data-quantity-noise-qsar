@@ -13,6 +13,7 @@ Reusable Python modules imported by notebooks. Each module is a subpackage with 
 | `plotting` | Reusable visualisations (endpoint distributions, learning curves) | [plotting/CLAUDE.md](plotting/CLAUDE.md) |
 | `cleaning` | Per-endpoint NaN filtering and IQR outlier detection | [cleaning/CLAUDE.md](cleaning/CLAUDE.md) |
 | `models` | Baseline model factory and uniform evaluation utilities | [models/CLAUDE.md](models/CLAUDE.md) |
+| `splitting` | Pre-defined train/test splits from PDE10A CSV columns (7 strategies) | [splitting/CLAUDE.md](splitting/CLAUDE.md) |
 
 ---
 
@@ -26,6 +27,9 @@ raw data
    │
    ▼
 [cleaning] — per-endpoint NaN filter + IQR outlier flagging
+   │
+   ▼
+[splitting] — apply pre-defined train/test split column (PDE10A); or inline sklearn split (ADME)
    │
    ▼
 [features] — SMILES → fingerprints / descriptors

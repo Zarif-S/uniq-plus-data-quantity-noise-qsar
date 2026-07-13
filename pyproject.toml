@@ -23,6 +23,7 @@ dependencies = [
     "matplotlib==3.8.2",
     "plotly==5.18.0",
     "seaborn>=0.13.2",
+    "nbformat>=5.10.4",
 ]
 
 [tool.uv]
