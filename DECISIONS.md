@@ -140,8 +140,58 @@ PPB models (~170–190 samples) will have wider uncertainty than HLM/RLM models 
 
 ---
 
+## ADR-003 — Discard `val` Rows in PDE10A Baseline Evaluation
+
+**Date**: 2026-07-14
+**Status**: Decided
+**Decider**: Zarif
+
 ---
 
-**Last Updated**: 2026-07-13
+### Context
+
+The PDE10A dataset ships with 7 pre-defined split columns. Each row is labelled `train`, `test`, or `val`. When building baseline models, a decision was needed on what to do with `val` rows — they cannot silently be included in either training or test without consequences.
+
+---
+
+### Alternatives Considered
+
+**Include `val` in training**: increases training set size, but conflates the purpose of the split. The original authors defined `val` separately; merging it into `train` would deviate from the intended experimental design.
+
+**Evaluate on `val` instead of `test`**: defeats the purpose of a held-out test set and introduces optimistic bias if `val` is later used for model selection.
+
+**Include `val` in test**: inflates test set size and mixes two partitions with potentially different distributional properties (e.g. temporal `val` years fall between `train` and `test` chronologically).
+
+**Discard `val` for baseline evaluation**: `val` rows are excluded from both training and evaluation. Only `train` → `test` is used. Accepted.
+
+---
+
+### Reasoning
+
+Baselines are a fixed benchmark, not a tuning exercise. No hyperparameter search, early stopping, or model selection is performed at this stage, so there is no use for `val` rows yet. Holding them out now means they remain available — uncontaminated — for:
+
+- **Phase 3 (deep learning)**: ChemProp and DeepChem require a validation set for early stopping.
+- **Phase 2 (learning curves)**: if sub-sampling of `train` is needed, `val` provides an independent check that the learning curve is not overfitting to test.
+
+Using `val` prematurely would either waste it or compromise the integrity of later experiments that genuinely need it.
+
+---
+
+### Decision
+
+`get_split` returns only `train` and `test` partitions. `val` rows are silently dropped. This is enforced at the splitting module level (see `src/splitting/`) and documented in SYNC-007.
+
+---
+
+### Implications for Later Phases
+
+- **Phase 3 (deep learning)**: revisit `get_split` to optionally return `val` for early stopping.
+- **Phase 2 (learning curves)**: `val` may be used as an independent check if sub-sampling `train`.
+
+---
+
+---
+
+**Last Updated**: 2026-07-14
 
 *Add new ADRs above this line, numbered sequentially.*
