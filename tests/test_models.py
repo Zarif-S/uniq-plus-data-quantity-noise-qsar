@@ -8,7 +8,7 @@ from src.models import evaluate_model, get_baseline_models
 def test_get_baseline_models_has_expected_keys():
     models = get_baseline_models()
     assert set(models.keys()) == {
-        "LinearRegression", "BayesianRidge", "RandomForest", "XGBoost", "LightGBM"
+        "Ridge", "BayesianRidge", "RandomForest", "XGBoost", "LightGBM"
     }
 
 

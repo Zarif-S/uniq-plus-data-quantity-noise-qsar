@@ -80,9 +80,9 @@ For this project, "concepts" are the major pipeline stages: `Data`, `EDA`, `Spli
 **Condition**: Always — `X_train`, `y_train`, `X_test`, `y_test` all present
 
 **Effects**:
-- `Model.train(X_train, y_train, model_name)` → fitted model, where `model_name` ∈ {`LinearRegression`, `BayesianRidge`, `RandomForest`, `XGBoost`, `LightGBM`}
+- `Model.train(X_train, y_train, model_name)` → fitted model, where `model_name` ∈ {`Ridge`, `BayesianRidge`, `RandomForest`, `XGBoost`, `LightGBM`}
 
-**Rationale**: Model training can only begin once both splits are featurized and isolated. Keeping this as an explicit handoff prevents premature training on un-split or un-featurized data. BayesianRidge is included as the Bayesian baseline (see ADR-001); LinearRegression as the interpretable baseline.
+**Rationale**: Model training can only begin once both splits are featurized and isolated. Keeping this as an explicit handoff prevents premature training on un-split or un-featurized data. BayesianRidge is included as the Bayesian baseline (see ADR-001); Ridge (alpha=1.0) as the interpretable linear baseline — plain OLS is ill-conditioned on 2048-dim binary fingerprints.
 
 ---
 

@@ -30,7 +30,7 @@
 
 ### Invariants
 
-- `get_baseline_models()` must always return exactly these five keys: `"LinearRegression"`, `"BayesianRidge"`, `"RandomForest"`, `"XGBoost"`, `"LightGBM"`
+- `get_baseline_models()` must always return exactly these five keys: `"Ridge"`, `"BayesianRidge"`, `"RandomForest"`, `"XGBoost"`, `"LightGBM"`
 - All returned estimators must implement `.fit(X, y)` and `.predict(X)` (sklearn interface)
 - `evaluate_model()` must always return all three keys: `"R2"`, `"RMSE"`, `"MSE"`
 - `R2` ∈ (−∞, 1.0]; `RMSE` ≥ 0; `MSE` ≥ 0
@@ -43,7 +43,7 @@
 ```
 get_baseline_models()
     │
-    └─► {"LinearRegression": LinearRegression(),
+    └─► {"Ridge":             Ridge(alpha=1.0),
          "BayesianRidge":    BayesianRidge(),
          "RandomForest":     RandomForestRegressor(n_estimators=100, random_state=42),
          "XGBoost":          XGBRegressor(n_estimators=100, random_state=42, verbosity=0),

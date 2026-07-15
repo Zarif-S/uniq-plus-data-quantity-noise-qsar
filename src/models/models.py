@@ -3,7 +3,7 @@
 import numpy as np
 from lightgbm import LGBMRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import BayesianRidge, LinearRegression
+from sklearn.linear_model import BayesianRidge, Ridge
 from sklearn.metrics import mean_squared_error, r2_score
 from xgboost import XGBRegressor
 
@@ -13,14 +13,15 @@ def get_baseline_models():
 
     All five models train with squared-error (MSE) loss — each library's default,
     not explicitly overridden, so comparisons are on equal footing:
-      - LinearRegression : OLS (minimises sum of squared residuals)
+      - Ridge             : L2-regularised OLS (alpha=1.0); plain OLS is ill-conditioned
+                            on 2048-dim binary fingerprints and fails catastrophically
       - BayesianRidge    : Gaussian likelihood (equivalent to MSE)
       - RandomForest     : criterion="squared_error" (sklearn default)
       - XGBoost          : objective="reg:squarederror" (XGBoost default)
       - LightGBM         : objective="regression_l2" (LightGBM default)
     """
     return {
-        "LinearRegression": LinearRegression(),
+        "Ridge": Ridge(alpha=1.0),
         "BayesianRidge": BayesianRidge(),
         "RandomForest": RandomForestRegressor(n_estimators=100, random_state=42),
         "XGBoost": XGBRegressor(n_estimators=100, random_state=42, verbosity=0),

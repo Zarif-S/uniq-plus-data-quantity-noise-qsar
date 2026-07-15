@@ -58,7 +58,7 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 - 80/20 random split per endpoint, seed=42
 
 **✅ Baseline Models (ADME)** — Sections 2.3–2.5
-- 5 models × 6 endpoints: LinearRegression, BayesianRidge, RandomForest, XGBoost, LightGBM
+- 5 models × 6 endpoints: Ridge, BayesianRidge, RandomForest, XGBoost, LightGBM
 - Metrics: R², RMSE; results table + predicted vs actual plots
 
 ### Later (On Deck)
