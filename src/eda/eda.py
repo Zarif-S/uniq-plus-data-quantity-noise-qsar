@@ -2,6 +2,7 @@
 
 import pandas as pd
 from rdkit import Chem
+from useful_rdkit_utils import max_possible_correlation
 
 
 def smiles_validity_report(df, smiles_col="SMILES"):
@@ -23,3 +24,36 @@ def missing_value_report(df, endpoint_cols):
     pct_missing = (n_missing / len(df) * 100).round(2)
     report = pd.DataFrame({"n_missing": n_missing, "pct_missing": pct_missing})
     return report
+
+FOLD_LEVELS = [2, 3, 5, 10]
+
+
+def max_corr_report(df, endpoint_cols, fold_levels=None, cycles=1000):
+    """Upper bound on achievable R² per endpoint at multiple assay noise levels.
+
+    Follows Pat Walters' approach (Brown, Muchmore & Hajduk noise model): for each
+    fold-change level, adds Gaussian noise of std=log10(fold) to the endpoint values
+    and computes mean Pearson r over `cycles` iterations, then squares to give R².
+
+    fold_levels: list of fold-change magnitudes to evaluate (default: [2, 3, 5, 10]).
+    Returns a DataFrame with n (valid rows) + one R² column per fold level.
+    """
+    import numpy as np
+
+    if fold_levels is None:
+        fold_levels = FOLD_LEVELS
+
+    rows = []
+    for col in endpoint_cols:
+        vals = df[col].dropna().values.astype(float)
+        row = {"endpoint": col, "n": len(vals)}
+        if len(vals) < 2:
+            for fold in fold_levels:
+                row[f"{fold}-Fold"] = float("nan")
+        else:
+            vals_list = vals.tolist()
+            for fold in fold_levels:
+                r = max_possible_correlation(vals_list, error=np.log10(fold), cycles=cycles)
+                row[f"{fold}-Fold"] = r ** 2
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("endpoint")

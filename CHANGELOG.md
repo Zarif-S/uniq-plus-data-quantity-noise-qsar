@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `notebooks/01_adme_eda_baseline.ipynb` Part 1B: IQR outlier detection (§1.11), per-endpoint row count table (§1.12)
 - `notebooks/01_adme_eda_baseline.ipynb` Part 2: featurization (§2.1), train/test split (§2.2), model training (§2.3), results tables (§2.4), predicted vs actual plots (§2.5)
 - `DECISIONS.md` ADR-002: per-endpoint filtering over imputation — rationale and implications documented
-- `ipykernel` added as dev dependency; venv registered as "UNIQ+ (Python 3.10)" Jupyter kernel
+- `ipykernel` added as dev dependency; venv registered as "UNIQ+ (Python 3.11)" Jupyter kernel
 
 ### Changed (2026-07-13)
 - `src/CLAUDE.md`: added `cleaning` and `models` rows to module table; updated pipeline diagram

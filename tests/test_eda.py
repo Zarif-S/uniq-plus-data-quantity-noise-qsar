@@ -3,7 +3,7 @@
 import numpy as np
 import pandas as pd
 import pytest
-from src.eda import missing_value_report, smiles_validity_report
+from src.eda import missing_value_report, smiles_validity_report, max_corr_report
 
 
 VALID_SMILES = "CCO"
@@ -30,3 +30,21 @@ def test_missing_value_report_percentages():
     assert report.loc["ep2", "n_missing"] == 2
     assert report.loc["ep1", "pct_missing"] == 25.0
     assert report.loc["ep2", "pct_missing"] == 50.0
+
+def test_max_corr_report_positive_and_bounded():
+    df = pd.DataFrame({"ep": np.linspace(0, 3, 100)})
+    report = max_corr_report(df, ["ep"], cycles=200)
+    for col in ["2-Fold", "3-Fold", "5-Fold", "10-Fold"]:
+        assert 0 < report.loc["ep", col] <= 1.0
+
+
+def test_max_corr_report_decreases_with_fold():
+    df = pd.DataFrame({"ep": np.linspace(0, 3, 100)})
+    report = max_corr_report(df, ["ep"], cycles=500)
+    assert report.loc["ep", "2-Fold"] > report.loc["ep", "3-Fold"] > report.loc["ep", "10-Fold"]
+
+
+def test_max_corr_report_all_nan_returns_nan():
+    df = pd.DataFrame({"ep": [np.nan] * 20})
+    report = max_corr_report(df, ["ep"], cycles=50)
+    assert np.isnan(report.loc["ep", "2-Fold"])

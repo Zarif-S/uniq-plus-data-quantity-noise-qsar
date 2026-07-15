@@ -81,7 +81,7 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 
 **✅ Environment Setup**
 - **Completed**: Week 1 (early July 2026)
-- **Outcome**: Python 3.10 env pinned via uv (pyproject.toml + uv.lock); all deps installable with `uv sync`
+- **Outcome**: Python 3.11 env pinned via uv (pyproject.toml + uv.lock); all deps installable with `uv sync`
 
 **✅ Project Scaffolding**
 - **Completed**: Week 1 (early July 2026)

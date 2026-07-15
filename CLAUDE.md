@@ -7,7 +7,7 @@
 - **PDE10A dataset**: PDE10A inhibitors with pIC50 values and 7 split strategies (temporal 2011–2013, chemotype-based, random)
 
 ### Key Technologies
-- Python 3.10 (managed via uv)
+- Python 3.11 (managed via uv)
 - ML: scikit-learn, XGBoost, LightGBM, DeepChem 2.8.0, ChemProp 1.6.1
 - Cheminformatics: RDKit 2023.9.5
 - Deep learning: PyTorch 2.0.1

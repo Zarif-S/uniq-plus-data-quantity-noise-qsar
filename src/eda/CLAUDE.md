@@ -27,14 +27,16 @@
 |--------|-----------|-------------|
 | `smiles_validity_report` | `(df, smiles_col="SMILES") → dict` | Returns `{valid_count, invalid_count, invalid_indices}` for all SMILES in the column |
 | `missing_value_report` | `(df, endpoint_cols) → DataFrame` | Returns DataFrame of `n_missing` and `pct_missing` per endpoint column |
+| `max_corr_report` | `(df, endpoint_cols, error=1/3, cycles=1000) → DataFrame` | Returns DataFrame of `n` (valid rows) and `max_r` (noise-ceiling Pearson r) per endpoint, using `useful_rdkit_utils.max_possible_correlation` (Brown, Muchmore & Hajduk model) |
 
 ### Invariants
 
-- Input DataFrame is never modified — both functions are pure reads
+- Input DataFrame is never modified — all functions are pure reads
 - Applied to raw data only — EDA must run before any cleaning or filtering
 - `smiles_validity_report` counts and indexes invalid SMILES; it never silently skips them
 - `missing_value_report` returns one row per endpoint; index matches `endpoint_cols` order
-- Neither function drops, fills, or transforms any data — outputs are reporting objects only
+- `max_corr_report` returns one row per endpoint; endpoints with fewer than 2 valid values return `max_r=NaN`
+- No function drops, fills, or transforms any data — outputs are reporting objects only
 
 ---
 
@@ -45,8 +47,11 @@ raw CSV → DataFrame
               │
               ├──→ smiles_validity_report(df)  → {valid_count, invalid_count, invalid_indices}
               │
-              └──→ missing_value_report(df, endpoint_cols)
-                        → DataFrame (n_missing, pct_missing per endpoint)
+              ├──→ missing_value_report(df, endpoint_cols)
+              │         → DataFrame (n_missing, pct_missing per endpoint)
+              │
+              └──→ max_corr_report(df, endpoint_cols, error=1/3, cycles=1000)
+                        → DataFrame (n, max_r per endpoint)
 ```
 
 ---
@@ -71,6 +76,17 @@ report = missing_value_report(df, ENDPOINT_COLS)
 display(report)  # shows n_missing and pct_missing per endpoint
 ```
 
+### Run noise ceiling report
+
+```python
+from src.eda import max_corr_report
+
+# Default error=1/3 log unit (~2x assay reproducibility)
+# Update with domain-specific CVs if known (e.g. HLM, MDR1, solubility assays)
+report = max_corr_report(df, ENDPOINT_COLS)
+display(report.round(3))  # shows n and max_r per endpoint
+```
+
 ---
 
-**Last Updated**: 2026-07-13 | **Status**: Active | **Maintainer**: Zarif
+**Last Updated**: 2026-07-15 | **Status**: Active | **Maintainer**: Zarif
