@@ -26,11 +26,16 @@ dependencies = [
     "nbformat>=5.10.4",
     "useful-rdkit-utils>=1.0",
     "ipywidgets>=8.1.8",
+    "setuptools<72",
+    "descriptastorus",
 ]
 
 [tool.uv]
 # Pin Python version for reproducibility
 python-preference = "only-managed"
+
+[tool.uv.sources]
+descriptastorus = { git = "https://github.com/bp-kelley/descriptastorus" }
 
 [dependency-groups]
 dev = [
