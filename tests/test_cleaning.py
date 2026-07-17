@@ -3,7 +3,57 @@
 import numpy as np
 import pandas as pd
 import pytest
-from src.cleaning import filter_endpoint, flag_iqr_outliers
+from src.cleaning import exclude_stereoisomer_pairs, filter_endpoint, flag_iqr_outliers
+
+
+# ── exclude_stereoisomer_pairs ────────────────────────────────────────────────
+
+@pytest.fixture
+def stereo_df():
+    # Two enantiomers of bromochlorofluoromethane; ep1 differs by 1.0 log unit (>log10(3)≈0.477)
+    return pd.DataFrame({
+        "SMILES": ["[C@@H](F)(Cl)Br", "[C@H](F)(Cl)Br", "CCO"],
+        "ep1": [1.0, 2.0, 1.5],   # pair differs by 1.0 > 0.477 → excluded
+        "ep2": [0.5, 0.6, 0.5],   # pair differs by 0.1 < 0.477 → fine alone
+    })
+
+
+def test_exclude_stereoisomer_pairs_removes_outlier_pair(stereo_df):
+    result, excluded = exclude_stereoisomer_pairs(stereo_df, "SMILES", ["ep1", "ep2"])
+    assert len(result) == 1
+    assert result["SMILES"].iloc[0] == "CCO"
+
+
+def test_exclude_stereoisomer_pairs_excluded_indices(stereo_df):
+    _, excluded = exclude_stereoisomer_pairs(stereo_df, "SMILES", ["ep1", "ep2"])
+    assert set(excluded) == {0, 1}
+
+
+def test_exclude_stereoisomer_pairs_no_mutation(stereo_df):
+    original_len = len(stereo_df)
+    exclude_stereoisomer_pairs(stereo_df, "SMILES", ["ep1", "ep2"])
+    assert len(stereo_df) == original_len
+
+
+def test_exclude_stereoisomer_pairs_keeps_close_pair():
+    # ep1 differs by 0.2 < log10(3) → pair should survive
+    df = pd.DataFrame({
+        "SMILES": ["[C@@H](F)(Cl)Br", "[C@H](F)(Cl)Br"],
+        "ep1": [1.0, 1.2],
+    })
+    result, excluded = exclude_stereoisomer_pairs(df, "SMILES", ["ep1"])
+    assert len(excluded) == 0
+    assert len(result) == 2
+
+
+def test_exclude_stereoisomer_pairs_ignores_nan_endpoints():
+    # ep1 is NaN for one compound — cannot compare, pair should survive
+    df = pd.DataFrame({
+        "SMILES": ["[C@@H](F)(Cl)Br", "[C@H](F)(Cl)Br"],
+        "ep1": [1.0, np.nan],
+    })
+    result, excluded = exclude_stereoisomer_pairs(df, "SMILES", ["ep1"])
+    assert len(excluded) == 0
 
 
 @pytest.fixture
