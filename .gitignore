@@ -42,3 +42,12 @@ coverage/
 
 # Python virtual environment
 .venv/
+
+# Trained model artefacts (too large for git)
+models/
+
+# Auto-generated session state
+__marimo__/
+
+# Scratch/exploratory scripts not part of the project
+test_notebooks_and_scripts/

@@ -41,3 +41,26 @@ def rdkit_descriptors(smiles_list):
             "RotBonds": rdMolDescriptors.CalcNumRotatableBonds(mol),
         })
     return pd.DataFrame(records)
+
+
+def rdkit_2d_features(smiles_list):
+    """Return (N, 200) normalized RDKit 2D descriptor array via descriptastorus."""
+    from descriptastorus.descriptors import rdNormalizedDescriptors
+    import warnings
+
+    generator = rdNormalizedDescriptors.RDKit2DNormalized()
+    features = []
+    for smi in smiles_list:
+        mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None
+        if mol is None:
+            raise ValueError(f"Invalid SMILES: {smi!r}")
+        result = generator.process(smi)
+        if result is None:
+            raise ValueError(f"Descriptor computation failed for SMILES: {smi!r}")
+        vals = np.array(result[1:], dtype=float)  # first element is success flag
+        if np.any(np.isnan(vals)):
+            n_nan = int(np.sum(np.isnan(vals)))
+            warnings.warn(f"{n_nan} NaN descriptor(s) for {smi!r}, replacing with 0.0")
+            vals = np.nan_to_num(vals, nan=0.0)
+        features.append(vals)
+    return np.array(features)

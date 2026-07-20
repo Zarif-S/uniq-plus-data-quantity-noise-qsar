@@ -38,3 +38,23 @@ def test_rdkit_descriptors_columns():
 def test_rdkit_descriptors_values_not_nan():
     df = rdkit_descriptors([ASPIRIN])
     assert not df.iloc[0].isna().any()
+
+
+# --- rdkit_2d_features tests ---
+
+from src.features import rdkit_2d_features
+
+
+def test_rdkit_2d_features_shape():
+    X = rdkit_2d_features([ETHANOL, ASPIRIN])
+    assert X.shape == (2, 200)
+
+
+def test_rdkit_2d_features_invalid_smiles_raises():
+    with pytest.raises(ValueError, match="Invalid SMILES"):
+        rdkit_2d_features(["not_valid"])
+
+
+def test_rdkit_2d_features_no_nans():
+    X = rdkit_2d_features([ASPIRIN, ETHANOL])
+    assert not np.any(np.isnan(X))

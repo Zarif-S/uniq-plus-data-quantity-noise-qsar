@@ -25,16 +25,17 @@ def endpoint_distributions(df, endpoint_cols, figsize=(14, 8)):
         ax = axes[i]
         data = df[col].dropna()
 
-        ax.hist(data, bins=40, density=True, alpha=0.6, color="steelblue", edgecolor="white")
+        _, bins, _ = ax.hist(data, bins=40, density=False, alpha=0.6, color="steelblue", edgecolor="white")
 
         if len(data) > 1 and np.var(data) > 0:
+            bin_width = bins[1] - bins[0]
             kde = gaussian_kde(data)
             x = np.linspace(data.min(), data.max(), 300)
-            ax.plot(x, kde(x), color="darkblue", linewidth=2)
+            ax.plot(x, kde(x) * len(data) * bin_width, color="darkblue", linewidth=2)
 
         ax.set_title(col, fontsize=10, pad=6)
         ax.set_xlabel("Value")
-        ax.set_ylabel("Density")
+        ax.set_ylabel("Count")
         ax.tick_params(labelsize=8)
 
     for j in range(n, len(axes)):

@@ -14,6 +14,7 @@ Reusable Python modules imported by notebooks. Each module is a subpackage with 
 | `cleaning` | Per-endpoint NaN filtering and IQR outlier detection | [cleaning/CLAUDE.md](cleaning/CLAUDE.md) |
 | `models` | Baseline model factory and uniform evaluation utilities | [models/CLAUDE.md](models/CLAUDE.md) |
 | `splitting` | Pre-defined train/test splits from PDE10A CSV columns (7 strategies) | [splitting/CLAUDE.md](splitting/CLAUDE.md) |
+| `tuning` | Hyperparameter tuning (LightGBM, RF) + frozen param management | [tuning/CLAUDE.md](tuning/CLAUDE.md) |
 
 ---
 
@@ -38,6 +39,9 @@ raw data
 [models] — fit baselines, evaluate (R², RMSE, MSE)
    │
    ▼
+[tuning] — tune LightGBM/RF (RandomizedSearchCV), freeze params to JSON
+   │
+   ▼
 [plotting] — visualise distributions, predicted vs actual
 ```
 
@@ -52,6 +56,12 @@ raw data
 
 ---
 
-## Navigation
+## Breadcrumbs
 
-- Root CLAUDE.md: [../CLAUDE.md](../CLAUDE.md)
+- **Project setup** → [Root CLAUDE.md](../CLAUDE.md)
+- **Strategic context** → [ROADMAP.md](../ROADMAP.md)
+- **Current sprint** → [PROJECT_PLAN.md](../PROJECT_PLAN.md)
+
+---
+
+**Last Updated**: 2026-07-17

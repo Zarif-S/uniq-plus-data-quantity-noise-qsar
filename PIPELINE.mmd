@@ -1,0 +1,48 @@
+flowchart TD
+    subgraph ADME["ADME Pipeline"]
+        direction TD
+        A1[("ADME\n3521 compounds\n6 endpoints")]
+
+        A2["EDA\n100% valid SMILES\n0 duplicates\nMissingness drives key decision:\nHLM 12%\nRLM 13%\nMDR1 25%\nSOL 38%\nPPB_H 95%\nPPB_R 95%\nIQR outliers flagged — not removed\nnoise study: removal would bias experiments"]
+
+        A3["Per-endpoint NaN filtering\nADR-002: imputation rejected\nmissingness is structural not random\n6 independent subsets\nHLM ~3087\nRLM ~3054\nMDR1 ~2642\nSOL ~2173\nPPB_H ~194\nPPB_R ~168"]
+
+        A4["Random 80/20 split\nseed=42\nSYNC-003"]
+
+        A5["ECFP4 Morgan Fingerprints\nradius=2\n2048 bits\nfit on train only\nSYNC-004: no leakage"]
+
+        A6["5 Baseline Models x 6 endpoints = 30 fits\nLinearRegression\nBayesianRidge — ADR-001\nRandomForest\nXGBoost\nLightGBM"]
+
+        A7["Evaluation per endpoint\nR2\nRMSE on held-out test\npredicted vs actual plots\nSYNC-006"]
+
+        A1 --> A2
+        A2 -->|"SYNC-002"| A3
+        A3 -->|"SYNC-003"| A4
+        A4 -->|"SYNC-004"| A5
+        A5 -->|"SYNC-005"| A6
+        A6 --> A7
+    end
+
+    subgraph PDE10A["PDE10A Pipeline"]
+        direction TD
+        P1[("PDE10A\n1162 compounds\npIC50")]
+
+        P2["EDA\n100% valid SMILES\n0 duplicates\n0 missing pIC50\n3 binding mode classes\naminohetaryl_c1_amide largest — 452 compounds\nTemporal range 2010-2013\nMost compounds satisfy Lipinski Ro5"]
+
+        P3["No filtering required\n1162 compounds retained"]
+
+        P4["7 pre-defined split columns\ntemporal 2011\ntemporal 2012\ntemporal 2013\nchemotype x 3\nrandom\nval rows discarded — ADR-003\nSYNC-007: bypass split generation"]
+
+        P5["ECFP4 Morgan Fingerprints\nradius=2\n2048 bits\ncomputed once — indexed per split\nSYNC-004: no leakage"]
+
+        P6["5 Baseline Models x 7 splits = 35 fits\nLinearRegression\nBayesianRidge — ADR-001\nRandomForest\nXGBoost\nLightGBM"]
+
+        P7["Evaluation per split strategy\nR2\nRMSE on held-out test\npredicted vs actual plots\nSYNC-006"]
+
+        P1 --> P2
+        P2 -->|"SYNC-002"| P3
+        P3 -->|"SYNC-007"| P4
+        P4 -->|"SYNC-004"| P5
+        P5 -->|"SYNC-005"| P6
+        P6 --> P7
+    end

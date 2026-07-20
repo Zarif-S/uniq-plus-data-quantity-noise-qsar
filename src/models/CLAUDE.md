@@ -13,7 +13,7 @@
 
 ## Concept Specification
 
-**Purpose**: Provide a fixed set of five sklearn-compatible baseline regressors and a uniform evaluation function so all ADME endpoint experiments report comparable R², RMSE, and MSE.
+**Purpose**: Provide a fixed set of six sklearn-compatible baseline regressors (including a dummy MeanPredictor) and a uniform evaluation function so all ADME endpoint experiments report comparable R², RMSE, and MSE.
 
 ### State
 
@@ -25,12 +25,12 @@
 
 | Action | Signature | Description |
 |--------|-----------|-------------|
-| `get_baseline_models` | `() → dict[str, estimator]` | Returns a fresh dict of five unfitted sklearn-compatible regressors keyed by display name |
+| `get_baseline_models` | `() → dict[str, estimator]` | Returns a fresh dict of six unfitted sklearn-compatible regressors keyed by display name |
 | `evaluate_model` | `(model, X_test, y_test) → dict[str, float]` | Calls `model.predict(X_test)`, computes and returns `{"R2": float, "RMSE": float, "MSE": float}` |
 
 ### Invariants
 
-- `get_baseline_models()` must always return exactly these five keys: `"Ridge"`, `"BayesianRidge"`, `"RandomForest"`, `"XGBoost"`, `"LightGBM"`
+- `get_baseline_models()` must always return exactly these six keys: `"MeanPredictor"`, `"Ridge"`, `"BayesianRidge"`, `"RandomForest"`, `"XGBoost"`, `"LightGBM"`
 - All returned estimators must implement `.fit(X, y)` and `.predict(X)` (sklearn interface)
 - `evaluate_model()` must always return all three keys: `"R2"`, `"RMSE"`, `"MSE"`
 - `R2` ∈ (−∞, 1.0]; `RMSE` ≥ 0; `MSE` ≥ 0
@@ -43,7 +43,8 @@
 ```
 get_baseline_models()
     │
-    └─► {"Ridge":             Ridge(alpha=1.0),
+    └─► {"MeanPredictor":    DummyRegressor(strategy="mean"),
+         "Ridge":             Ridge(alpha=1.0),
          "BayesianRidge":    BayesianRidge(),
          "RandomForest":     RandomForestRegressor(n_estimators=100, random_state=42),
          "XGBoost":          XGBRegressor(n_estimators=100, random_state=42, verbosity=0),
@@ -61,7 +62,7 @@ evaluate_model(model, X_test, y_test)
 
 ## Common Tasks
 
-### Train and evaluate all 5 models on one endpoint
+### Train and evaluate all 6 models on one endpoint
 
 ```python
 from src.models import get_baseline_models, evaluate_model
@@ -92,7 +93,7 @@ results_df = pd.DataFrame(rows)
 
 ### Fixed model set, no registry
 
-**Issue**: A plugin registry pattern would add complexity with no benefit for a 6-week project with exactly 5 fixed models.
+**Issue**: A plugin registry pattern would add complexity with no benefit for a 6-week project with exactly 6 fixed models.
 
 **Solution**: `get_baseline_models()` returns a hardcoded dict. If models change, edit the function directly.
 
@@ -108,4 +109,4 @@ results_df = pd.DataFrame(rows)
 
 ---
 
-**Last Updated**: 2026-07-13 | **Status**: Active | **Maintainer**: Zarif
+**Last Updated**: 2026-07-17 | **Status**: Active | **Maintainer**: Zarif

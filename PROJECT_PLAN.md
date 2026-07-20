@@ -25,11 +25,11 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 
 ---
 
-## Current Focus (Week 1–2, July 2026)
+## Current Focus (Week 3–4, July 2026)
 
-**Theme**: EDA + Baseline Models — ADME dataset
+**Theme**: ADME dataset — Hyperparameter tuning, learning curves, and noise injection
 
-**Strategic Alignment**: ROADMAP Phase 1 — *"Understand the ADME dataset and establish a working baseline pipeline"*
+**Strategic Alignment**: ROADMAP Phases 3–6 — *"Tune models, then quantify how data quantity and label noise affect performance"*
 
 ---
 
@@ -37,63 +37,58 @@ This is NOT task-level tracking or strategic vision — see ROADMAP.md for strat
 
 ### Now (In Progress)
 
-**Phase 2 — PDE10A EDA + Baseline Models**
-- **What**: EDA on PDE10A dataset; baseline models across all 7 split strategies (temporal 2011–2013, chemotype-based, random); split strategy comparison
-- **Why**: Completing both dataset baselines before designing experiments gives supervisors a full picture; split strategy decisions (which to use for learning curves, noise injection) are better made with PDE10A baselines in hand
-- **Status**: Not yet started
-- **Next milestone**: `notebooks/02_eda_baseline_pde10a.ipynb`
+**Phase 3 — Baseline Tuning (Clean Data Reference)**
+- **What**: Tune LightGBM, RF, MPNN2 on clean full training data (4 endpoints) to validate tuning pipeline and establish clean-data reference
+- **Why**: Need a working tuning pipeline before the experiment loop; clean-data tuned R² serves as the ceiling for comparison
+- **Status**: Module ready (`src/tuning/`), notebook cells written — needs execution
+- **Module**: `src/tuning/` — see [src/tuning/CLAUDE.md](src/tuning/CLAUDE.md)
 
-### Recently Completed (Phase 1)
+### Next (On Deck)
 
-**✅ EDA (ADME)** — `notebooks/01_adme_eda_baseline.ipynb` Sections 1.1–1.10
-- SMILES validity (100% valid), duplicate check (0), missing value report, outlier detection (3σ + IQR), distributions, correlations, chemical space (Lipinski Ro5)
+**Phase 4 — Learning Curves (Quantity Axis)**
+- Two arms: **baseline** (default hyperparams) vs **tuned** (re-tune at each fraction via RandomizedSearchCV)
+- Vary fractions ∈ {0.05, 0.10, 0.25, 0.50, 0.75, 1.0}; 10 seeds per fraction
+- Metrics recorded per run: R², RMSE, MAE, Spearman ρ, CCC
+- Compare: does tuning help or hurt at small N?
 
-**✅ Data Cleaning (ADME)** — Sections 1.11–1.12
-- Strategy: per-endpoint NaN filtering (ADR-002); IQR 1.5× outlier flagging (flag-only); effective N table per endpoint
+**Phase 5 — Noise Injection (Noise Axis)**
+- Two arms: **baseline** vs **tuned** (re-tune on noisy data — CV folds inherit noise)
+- Three noise types (Landrum & Riniker): Gaussian (intra-assay), systematic bias (inter-assay), gross errors (annotation)
+- Training labels only — test always clean; 10 seeds per level
+- Metrics recorded per run: R², RMSE, MAE, Spearman ρ, CCC
 
-**✅ Featurization (ADME)** — Section 2.1
-- ECFP4 Morgan fingerprints (radius=2, 2048 bits) via `src/features.morgan_fingerprints`; per-endpoint filtered subsets
+**Phase 5b — Validation Set Quality Sub-Experiment**
+- At 3 representative sizes (full N, 25%, 5%): compare noisy validation (realistic) vs clean validation (ideal) during tuning
+- Answers: how important is a clean validation set for hyperparameter selection under noise?
 
-**✅ Train/Test Split** — Section 2.2
-- 80/20 random split per endpoint, seed=42
+**Phase 6 — 2D Grid + Writeup**
+- All (N, noise_level) combinations for both arms; 5 seeds per cell
+- Surface plots, baseline vs tuned comparison, validation quality findings
+- Writeup: clean notebooks, figures, results summary
 
-**✅ Baseline Models (ADME)** — Sections 2.3–2.5
-- 5 models × 6 endpoints: Ridge, BayesianRidge, RandomForest, XGBoost, LightGBM
-- Metrics: R², RMSE; results table + predicted vs actual plots
+### Parked
 
-### Later (On Deck)
-
-- **Phase 3** (Weeks 4–6): Learning curves + noise injection — scope and dataset coverage to be agreed with supervisors at Phase 2 review
-- **TBD**: Deep learning models (ChemProp, DeepChem) — review after Phase 2 based on time remaining
-
----
-
-## Active Decisions Pending
-
-**Deep learning models**
-- **Blocks**: Nothing yet — Phase 4 consideration
-- **Owner**: Zarif to investigate ChemProp/DeepChem/ Tx-Gemma inclusion
-- **ETA**: End of Phase 2 (Week 3)
+**PDE10A — EDA + Baseline Models**
+- **Status**: Complete — `notebooks/02_eda_baseline_pde10a.ipynb`
+- **Why parked**: Focus shifted to ADME dataset for learning curve and noise experiments. PDE10A baselines are done and can be revisited for cross-dataset comparison after ADME experiments are complete.
 
 ---
 
 ## Recently Completed
 
-**✅ Environment Setup**
-- **Completed**: Week 1 (early July 2026)
-- **Outcome**: Python 3.11 env pinned via uv (pyproject.toml + uv.lock); all deps installable with `uv sync`
+**✅ Phase 2 — PDE10A EDA + Baseline Models** (Week 3)
+- EDA, baseline models across 7 split strategies, split strategy comparison
+- Key finding: distribution shift dominates on 5/7 splits; MW beats ECFP4 on hard splits
 
-**✅ Project Scaffolding**
-- **Completed**: Week 1 (early July 2026)
-- **Outcome**: Folder structure created (src/, notebooks/, tests/, data/raw/, data/processed/)
+**✅ Phase 1 — ADME EDA + Baseline Models** (Weeks 1–2)
+- EDA (SMILES validity, missing values, outliers, distributions, correlations, chemical space, pairwise similarity)
+- Data cleaning (per-endpoint NaN filtering, IQR flagging, stereoisomer exclusion)
+- Featurization (ECFP4 Morgan fingerprints, radius=2, 2048 bits)
+- Train/test split (80/20 random, seed=42)
+- 6 models × 6 endpoints with R², RMSE, MAE, Spearman ρ, CCC; predicted vs actual plots; similarity-binned MAE
 
-**✅ Data Acquisition**
-- **Completed**: Week 1 (early July 2026)
-- **Outcome**: ADME dataset (3521 compounds, 6 endpoints) and PDE10A dataset in data/raw/
-
-**✅ Documentation Foundation**
-- **Completed**: Week 1 (early July 2026)
-- **Outcome**: CLAUDE.md, ROADMAP.md, SYNCHRONIZATIONS.md, LESSONS_LEARNED.md all populated
+**✅ Environment Setup & Scaffolding** (Week 1)
+- Python 3.11 env pinned via uv; folder structure; ADME + PDE10A datasets acquired; documentation foundation
 
 ---
 
@@ -121,6 +116,6 @@ Task lists are ephemeral (conversation-level). This document stays high-level.
 
 ---
 
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-20
 **Review Cadence**: End of each phase (every 1–2 weeks)
-**Current Period**: Week 2–3, Phase 2
+**Current Period**: Week 3–4, Phase 3 (ADME)

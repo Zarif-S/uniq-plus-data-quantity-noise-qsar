@@ -1,0 +1,193 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    01_adme_eda_baseline.ipynb  WORKFLOW                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ INPUT
+ ─────
+ data/raw/ADME_public_set_3521.csv
+ 3521 compounds × 10 columns
+ ┌──────────────┬────────────┬────────┬────────────────┬─────────────────────┐
+ │ Internal ID  │ Vendor ID  │ SMILES │ CollectionName │ 6 LOG endpoints ... │
+ └──────────────┴────────────┴────────┴────────────────┴─────────────────────┘
+                                                         HLM  MDR1  SOL
+                                                         PPB_H  PPB_R  RLM
+
+═══════════════════════════ PART 1: EDA & CLEANING ═══════════════════════════
+
+ 1.1  Load & Inspect ──────────────────────────── shape, dtypes, head()
+                         │
+ 1.2  SMILES Validity ─────────────────────────── RDKit parse check (all valid)
+                         │
+ 1.3  Duplicate Check ─────────────────────────── duplicate SMILES detection
+                         │
+ 1.4  Missing Values ──────────────────────────── per-endpoint NaN counts
+                         │                        (PPB_H/R very sparse: ~170 rows)
+ 1.5  Summary Stats ───────────────────────────── describe() per endpoint
+                         │
+ 1.6  Outlier Detection ───────────────────────── visual inspection
+                         │
+ 1.7  Distributions ───────────────────────────── histograms per endpoint
+                         │
+ 1.8  Correlations ────────────────────────────── Spearman between endpoints
+                         │
+ 1.9  Chemical Space ──────────────────────────── MW, LogP, TPSA overview
+                         │
+ 1.10 EDA Conclusions ─────────────────────────── documented findings
+                         │
+                         ▼
+             ┌───────────────────────┐
+             │   CLEANING STEPS      │
+             ├───────────────────────┤
+             │ 1.10a Stereoisomer    │──── exclude pairs w/ >3× diff
+             │       exclusion       │     (0 removed — pre-cleaned)
+             │                       │
+             │ 1.11  IQR flagging    │──── 1.5× IQR rule, flag only
+             │                       │     (no removal — noise study)
+             │                       │
+             │ 1.12  Per-endpoint    │──── filter NaN per endpoint
+             │       row counts      │     (each model gets own rows)
+             └───────────┬───────────┘
+                         │
+                         ▼
+         df  (3521 rows, cleaned/flagged, 6 endpoints)
+
+═══════════════════════════ PART 2: MODELLING ════════════════════════════════
+
+ NOTE: Modelling focuses on 4 endpoints with sufficient data:
+       HLM_CLint, MDR1-MDCK, Solubility, RLM_CLint
+       PPB_H and PPB_R excluded (~170 rows — too sparse for reliable modelling)
+
+ 2.1  FEATURIZATION
+      ┌──────────────────────────────────────────────────────────────────┐
+      │                                                                  │
+      │  SMILES ──► morgan_fingerprints(radius=2, nBits=2048)           │
+      │              = ECFP4 Morgan fingerprints                         │
+      │              → X: numpy array (n_compounds × 2048)               │
+      │                                                                  │
+      │  (MPNN2 uses raw SMILES + rdkit_2d_normalized separately)       │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+ 2.2  TRAIN / TEST SPLIT
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  For each endpoint:                                              │
+      │    1. Drop rows where y is NaN                                   │
+      │    2. 80/20 random split (SEED=42)                               │
+      │    → (X_train, X_test, y_train, y_test, smiles_train, smiles_test) │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+ 2.3  MODEL TRAINING & EVALUATION
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  6 models  ×  4 endpoints  =  24 train/evaluate cycles          │
+      │                                                                  │
+      │  Models:                                                         │
+      │    • MeanPredictor  (dummy baseline)                             │
+      │    • Ridge                                                       │
+      │    • BayesianRidge                                               │
+      │    • RandomForest                                                │
+      │    • XGBoost                                                     │
+      │    • LightGBM                                                    │
+      │                                                                  │
+      │  Metrics per (model, endpoint):                                  │
+      │    → R², RMSE, MSE                                               │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+ 2.4  RESULTS SUMMARY ─────────────────── results_df (model × endpoint × metric)
+      2.4b Fingerprint radius sweep ───── r=1, 2, 4 sensitivity check
+                         │
+                         ▼
+ 2.5  PREDICTED vs ACTUAL ──────────────── scatter plots per model × endpoint
+                         │
+                         ▼
+ 2.6  MPNN2 (ChemProp) ────────────────── graph neural net + rdkit_2d_normalized
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  SMILES ──► molecular graph (atoms/bonds)                        │
+      │           + rdkit_2d_normalized descriptors                       │
+      │  Trained via ChemProp 1.6.1, num_folds=1                        │
+      │  (gated by TRAIN_MPNN2 flag)                                     │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+ 2.7  SIMILARITY-BINNED MAE ────────────── error vs train-set similarity
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  For each test compound:                                         │
+      │    FCFP (r=4, 1024-bit) + Dice similarity                       │
+      │    → mean of top-5 nearest train neighbours                      │
+      │    → bin by similarity (0.1 steps)                               │
+      │    → MAE per bin per model                                       │
+      │  Follows Fang et al. methodology                                 │
+      └──────────────────────────────────────────────────────────────────┘
+
+═══════════════════════ PART 3: HYPERPARAMETER TUNING ════════════════════════
+
+ Clean-data reference tuning. Validates pipeline before experiment loop.
+ Phases 4–6 re-tune per condition (tuned arm) vs default params (baseline arm).
+
+ 3.1  LIGHTGBM TUNING
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  RandomizedSearchCV (n_iter=50, cv=5)                            │
+      │  Search space: n_estimators, learning_rate, num_leaves,          │
+      │                min_child_samples, subsample, colsample_bytree    │
+      │  → (fitted_model, best_params)                                   │
+      │  → save_params → models/tuned_params/{ep}_lgbm.json             │
+      │  4 endpoints × 1 tuning run each                                 │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+ 3.1b RANDOM FOREST TUNING
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  RandomizedSearchCV (n_iter=50, cv=5)                            │
+      │  Search space: n_estimators, max_depth, min_samples_leaf,        │
+      │                max_features                                      │
+      │  → (fitted_model, best_params)                                   │
+      │  → save_params → models/tuned_params/{ep}_rf.json               │
+      │  4 endpoints × 1 tuning run each                                 │
+      └──────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+      Comparison table: baseline vs tuned (R², RMSE) for LightGBM + RF
+                         │
+                         ▼
+ 3.2  MPNN2 TUNING (early stopping)
+      ┌──────────────────────────────────────────────────────────────────┐
+      │  Fixed architecture: hidden_size=300, depth=3 (ChemProp defaults)│
+      │  Generous --epochs 50, early stopping via internal val split     │
+      │  4 endpoints (HLM, MDR1, SOL, RLM)                              │
+      │  (gated by TUNE_MPNN2 flag)                                      │
+      └──────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ OUTPUTS
+ ───────
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │  results_df     24 rows (6 models × 4 endpoints) with R², RMSE, MSE     │
+ │  preds_store    dict of predictions per (model, endpoint) for plotting   │
+ │  sim_df         per-compound similarity bin + absolute error records     │
+ │  tuned params   models/tuned_params/{ep}_{lgbm,rf}.json (reference)     │
+ │                                                                          │
+ │  Figures:       distributions, correlations, pred-vs-actual, sim-MAE    │
+ └────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════ PHASES 4–6 (PLANNED) ═════════════════════════════════
+
+ Phase 4: Learning curves — vary fraction ∈ {0.05, 0.10, 0.25, 0.50, 0.75, 1.0}
+          Two arms: baseline (default params) vs tuned (re-tune per fraction)
+          10 seeds per fraction, σ=0
+
+ Phase 5: Noise injection — 3 noise types (Gaussian, systematic bias, gross errors)
+          Two arms: baseline vs tuned (re-tune on noisy data, CV inherits noise)
+          At full N, training labels only — test always clean
+
+ Phase 5b: Validation quality sub-experiment
+           At 3 sizes (full N, 25%, 5%): noisy val vs clean val during tuning
+
+ Phase 6: 2D grid — f(fraction, noise_level) surface, both arms
+          Models: LightGBM, RF, MPNN2, BayesianRidge (baseline only)
+
+ Experiment loop (tuned arm):
+   tune_lightgbm(X_sub, y_noisy) → evaluate(X_test_clean, y_test_clean)
+ Experiment loop (baseline arm):
+   LGBMRegressor(**defaults).fit(X_sub, y_noisy) → evaluate(X_test_clean, y_test_clean)

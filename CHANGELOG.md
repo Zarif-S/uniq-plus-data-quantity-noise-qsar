@@ -17,6 +17,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-17 — Phase 1/2 updates)
+- `MeanPredictor` (DummyRegressor) added to `get_baseline_models()` — 6 models total; serves as trivial lower bound
+- `src/cleaning/cleaning.py`: `exclude_stereoisomer_pairs` — removes stereoisomer pairs with >3-fold difference on any log-scale endpoint (0 removed from ADME dataset — pre-cleaned by authors)
+- `notebooks/01_adme_eda_baseline.ipynb` §1.10a: stereoisomer exclusion analysis
+- `notebooks/01_adme_eda_baseline.ipynb` §2.5: MPNN2 (ChemProp graph + rdkit_2d_normalized descriptors)
+- `notebooks/01_adme_eda_baseline.ipynb` §2.7: similarity-binned MAE analysis (Fang et al. methodology — FCFP4, Dice, mean-of-top-5, 0.1-unit bins)
+- `notebooks/02_eda_baseline_pde10a.ipynb`: complete PDE10A EDA + baseline models across 7 split strategies
+- `tests/test_cleaning.py`: 5 additional tests for `exclude_stereoisomer_pairs` (11 total)
+
+### Changed (2026-07-17)
+- `src/models/CLAUDE.md`: updated model count from 5 → 6 (MeanPredictor added)
+- `tests/test_models.py`: expected keys updated to include MeanPredictor
+- `ROADMAP.md`: "Linear Regression" → "Ridge" + MeanPredictor in Phase 1 baseline models
+- `PROJECT_PLAN.md`: Phase 2 PDE10A status updated to complete
+
 ### Added (2026-07-13 — Phase 1 completion)
 - `src/cleaning/` subpackage: `filter_endpoint` (per-endpoint NaN filtering) and `flag_iqr_outliers` (1.5×IQR outlier detection, flag-only)
 - `src/models/` subpackage: `get_baseline_models` (5-model factory) and `evaluate_model` (R², RMSE)
@@ -46,4 +61,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-**Last Updated**: 2026-07-13
+**Last Updated**: 2026-07-17

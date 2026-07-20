@@ -192,6 +192,44 @@ Using `val` prematurely would either waste it or compromise the integrity of lat
 
 ---
 
-**Last Updated**: 2026-07-14
+## ADR-004 — Fixed Validation Set Over k-Fold CV for Hyperparameter Tuning
+
+### Context
+
+Hyperparameter tuning for LightGBM and RandomForest requires a held-out set to score candidate configurations. The standard choice is k-fold cross-validation (`cv=5`). An alternative is a single fixed validation set carved out of the training data (20% hold-out, same `random_state` as the train/test split).
+
+### Options Considered
+
+**k-Fold CV (`cv=5`)**: Each fold uses a different 20% of training data as validation. More robust estimate of generalisation; standard practice.
+
+**Fixed val set (PredefinedSplit, 20%)**: A single held-out slice is fixed for the entire hyperparameter search. Slightly higher variance in the score estimate, but the val set is an explicit, controllable object.
+
+### Decision
+
+Fixed val set via `PredefinedSplit`. The function signature is `tune_lightgbm(X_train, y_train, X_val, y_val, ...)` and `tune_rf(X_train, y_train, X_val, y_val, ...)`. After selecting best params, the model is refitted on `X_train + X_val` before returning.
+
+### Rationale
+
+The decisive reason is **Phase 5b**, which compares:
+- tuning with a *noisy* validation set vs
+- tuning with a *clean* validation set
+
+at representative dataset sizes (full N, 25%, 5%). This sub-experiment requires explicit, reproducible control over exactly which molecules are in the val set and whether noise has been injected into them. With k-fold CV the val set rotates across folds — you cannot cleanly label it as "noisy" or "clean" without injecting noise into all folds simultaneously, which conflates the experiment.
+
+A fixed val set makes the val partition a first-class object that the experiment loop can manipulate independently of the train set.
+
+Secondary reasons:
+- **Speed**: `PredefinedSplit` with one fold is 5× faster than `cv=5`, relevant when re-tuning per condition across many experiment cells.
+- **Consistency**: the same val molecules are held out in every tuning call, so hyperparameter scores are comparable across conditions.
+
+### Implications
+
+- The 20% val split is done in the notebook before calling `tune_*`, using `train_test_split(X_train, y_train, test_size=0.2, random_state=SEED)`.
+- For Phase 5b: the noisy-val arm injects noise into `y_val` before passing it to `tune_*`; the clean-val arm passes the original `y_val`. The test set remains clean in both arms.
+- `src/tuning/CLAUDE.md` function signatures updated to reflect `X_val, y_val` parameters.
+
+---
+
+**Last Updated**: 2026-07-20
 
 *Add new ADRs above this line, numbered sequentially.*

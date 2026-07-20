@@ -1,0 +1,170 @@
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    03_adme_experiments.ipynb  WORKFLOW                      │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+ INPUT
+ ─────
+ data/raw/ADME_public_set_3521.csv  (same source as nb01)
+ ┌─────────────────────────────────────────────────────────────────────────┐
+ │ Config flags:  RUN_LEARNING_CURVES   (Phase 4)                          │
+ │                RUN_NOISE_INJECTION   (Phase 5)                          │
+ │                RUN_MPNN2_EXPERIMENTS (future)                           │
+ └─────────────────────────────────────────────────────────────────────────┘
+
+════════════════════ SECTION 1: DATA LOADING & PREPARATION ══════════════════
+
+ cell: data_load
+
+ Load CSV → df (3521 compounds)
+
+ For each of 4 endpoints (HLM, MDR1, SOL, RLM):
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  1. filter_endpoint(df, col)         → drop NaN rows                    │
+ │  2. morgan_fingerprints(radius=2, nBits=2048)  → X (n × 2048)          │
+ │  3. train_test_split(test_size=0.2, random_state=42)                    │
+ │       → X_train, X_test, y_train, y_test                                │
+ │  4. Store in  ep_data[col]                                               │
+ └──────────────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+    ep_data  — fixed train/test splits for all experiments
+    NOTE: test set is held out clean for the entire notebook
+
+══════════════ SECTION 2: LEARNING CURVES — Phase 4 ═════════════════════════
+
+ cell: lc_loop
+
+ Fractions:  {0.05, 0.10, 0.25, 0.50, 0.75, 1.0}
+ Outer loop: 4 endpoints × 6 fractions = 24 (endpoint, fraction) pairs
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  TUNE ONCE PER PAIR  (outside seed loop, reference seed = 99)           │
+ │                                                                          │
+ │  X_ref = frac% subsample of X_train  (RandomState(99))                  │
+ │  X_ref split 80/20 (random_state=42)  →  X_tune_r / X_val_r            │
+ │                                                                          │
+ │  tune_lightgbm(X_tune_r, y_tune_r, X_val_r, y_val_r, n_iter=50)        │
+ │    → lgbm_params                                                         │
+ │  tune_rf(X_tune_r, y_tune_r, X_val_r, y_val_r, n_iter=50)              │
+ │    → rf_params                                                           │
+ │                                                                          │
+ │  Special case frac=1.0:  X_ref = X_train  (matches nb01 section 3.1)   │
+ └───────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+                      ▼ inner loop: 10 seeds per (endpoint, fraction)
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  X_sub = frac% subsample of X_train  (this seed's random subsample)     │
+ │                                                                          │
+ │  BASELINE ARM  (default hyperparams)         4 models                   │
+ │    • MeanPredictor                                                       │
+ │    • BayesianRidge                                                       │
+ │    • RandomForest(n_estimators=100)                                      │
+ │    • LightGBM(n_estimators=100)                                          │
+ │                                                                          │
+ │  TUNED ARM  (frozen params from tune step)   2 models                   │
+ │    • LightGBM(lgbm_params)                                               │
+ │    • RandomForest(rf_params)                                             │
+ │                                                                          │
+ │  All models: .fit(X_sub, y_sub)                                          │
+ │  evaluate_model(model, X_test, y_test)  →  R², RMSE, MSE               │
+ │  Append row to lc_rows                                                   │
+ └──────────────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+ lc_results  DataFrame  (4 ep × 6 frac × 10 seeds × 6 models = 1440 rows)
+
+ Tuning call counts:  4 endpoints × 6 fractions × 2 models = 48 tune calls
+ (no per-seed re-tuning → 10× speedup, scientifically valid)
+
+ Outputs:
+   • Summary table — mean R² ± std per (model, endpoint, fraction)
+   • Learning curve plots — R² vs fraction (baseline vs tuned, per endpoint)
+
+══════════════ SECTION 3: NOISE INJECTION — Phase 5 ════════════════════════
+
+ cell: noise_loop
+
+ Noise types & levels (15 conditions total):
+ ┌──────────────────────────────────────┬──────────────────────────────────┐
+ │  Gaussian σ (intra-assay)            │ 0.0, 0.1, 0.3, 0.5, 1.0 × std  │
+ │  Systematic bias (inter-assay)       │ 0.0, 0.1, 0.3, 0.5, 1.0 × std  │
+ │    shifts 50% of labels              │   (applied to random half)       │
+ │  Gross errors (annotation errors)    │ 0.0, 0.01, 0.05, 0.10, 0.20    │
+ │    replaces k% with uniform random   │   (fraction of training labels)  │
+ └──────────────────────────────────────┴──────────────────────────────────┘
+
+ Outer loop: 4 endpoints × 15 conditions = 60 (endpoint, condition) pairs
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  TUNE ONCE PER PAIR  (outside seed loop, reference seed = 99)           │
+ │                                                                          │
+ │  y_ref_noisy = noise_fn(y_train, level, seed=99)                        │
+ │    (noise_level=0.0  →  y_ref_noisy = y_train, clean tuning)            │
+ │  X_train split 80/20 (random_state=42)  →  X_tune_r / X_val_r          │
+ │                                                                          │
+ │  tune_lightgbm(X_tune_r, y_tune_r_noisy, X_val_r, y_val_r_noisy, n_iter=50) │
+ │    → lgbm_params                                                         │
+ │  tune_rf(X_tune_r, y_tune_r_noisy, X_val_r, y_val_r_noisy, n_iter=50)  │
+ │    → rf_params                                                           │
+ └───────────────────────────────────┬─────────────────────────────────────┘
+                                     │
+                      ▼ inner loop: 10 seeds per (endpoint, condition)
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  y_noisy = noise_fn(y_train, level, seed)  ← fresh noisy sample         │
+ │                                                                          │
+ │  BASELINE ARM  (default hyperparams)         4 models                   │
+ │    • MeanPredictor                                                       │
+ │    • BayesianRidge                                                       │
+ │    • RandomForest(n_estimators=100)                                      │
+ │    • LightGBM(n_estimators=100)                                          │
+ │                                                                          │
+ │  TUNED ARM  (frozen params from tune step)   2 models                   │
+ │    • LightGBM(lgbm_params)                                               │
+ │    • RandomForest(rf_params)                                             │
+ │                                                                          │
+ │  All models: .fit(X_train, y_noisy)                                      │
+ │  evaluate_model(model, X_test, y_test)  ←  test always CLEAN           │
+ │  Append row to noise_rows                                                │
+ └──────────────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+ noise_results  DataFrame  (4 ep × 15 cond × 10 seeds × 6 models = 3600 rows)
+
+ Tuning call counts:  4 endpoints × 15 conditions × 2 models = 120 tune calls
+
+ Outputs:
+   • Summary tables — mean R² ± std per (model, endpoint, noise level)
+   • Noise degradation plots — R² vs noise level (3 types × 4 endpoints grid)
+
+══════════════════════ SECTION 4: SAVE RESULTS ══════════════════════════════
+
+ cell: save_results
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  lc_results     →  data/processed/learning_curve_results.csv            │
+ │  noise_results  →  data/processed/noise_injection_results.csv           │
+ └──────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ KEY DESIGN CHOICES
+ ──────────────────
+ • Test set always CLEAN — noise and subsampling affect training data only
+ • Tune once per condition, outside seed loop — 10× speedup, valid comparison
+ • Reference seed = 99 for tuning subsample — reproducible across runs
+ • frac=1.0 learning curve → X_ref = X_train, same val partition as nb01 §3.1
+ • Tuned arm params frozen for all 10 seeds in a condition — fair comparison
+
+ OUTPUTS
+ ───────
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │  lc_results     1440 rows: ep × fraction × seed × model                  │
+ │  noise_results  3600 rows: ep × condition × seed × model                 │
+ │                                                                            │
+ │  data/processed/learning_curve_results.csv                                │
+ │  data/processed/noise_injection_results.csv                               │
+ │                                                                            │
+ │  Figures: learning curves (R² vs fraction), noise degradation grids       │
+ └────────────────────────────────────────────────────────────────────────────┘

@@ -1,7 +1,9 @@
 """EDA utilities for UNIQ+ ADME dataset analysis."""
 
+import numpy as np
 import pandas as pd
 from rdkit import Chem
+from rdkit.Chem import rdFingerprintGenerator, DataStructs
 from useful_rdkit_utils import max_possible_correlation
 
 
@@ -57,3 +59,34 @@ def max_corr_report(df, endpoint_cols, fold_levels=None, cycles=1000):
                 row[f"{fold}-Fold"] = r ** 2
         rows.append(row)
     return pd.DataFrame(rows).set_index("endpoint")
+
+
+def pairwise_tanimoto(smiles_list, radius=2, n_bits=2048):
+    """Compute all pairwise Tanimoto similarities for a list of SMILES.
+
+    Uses RDKit's BulkTanimotoSimilarity for speed: for each molecule i,
+    computes Tanimoto against all molecules j > i (upper triangle only),
+    giving N*(N-1)/2 pairs total. Internally works with ExplicitBitVect
+    objects so the comparison runs in optimized C++.
+
+    Returns a 1-D numpy array of similarity values (upper triangle, no diagonal).
+    """
+    # Generate Morgan fingerprints as ExplicitBitVect objects (not numpy)
+    # BulkTanimotoSimilarity requires these native RDKit bit vectors
+    gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
+    fps = []
+    for smi in smiles_list:
+        mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None
+        if mol is None:
+            raise ValueError(f"Invalid SMILES: {smi!r}")
+        fps.append(gen.GetFingerprint(mol))
+
+    # Upper triangle: compare each molecule to all subsequent ones
+    # BulkTanimotoSimilarity(fp_i, [fp_j, ...]) returns a list of floats
+    sims = []
+    n = len(fps)
+    for i in range(n - 1):
+        bulk = DataStructs.BulkTanimotoSimilarity(fps[i], fps[i + 1:])
+        sims.extend(bulk)
+
+    return np.array(sims)
