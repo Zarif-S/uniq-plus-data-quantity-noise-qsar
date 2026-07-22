@@ -96,4 +96,10 @@ fig.savefig("figures/endpoint_distributions.png", dpi=150, bbox_inches="tight")
 
 ---
 
+## TODOs
+
+- **MODEL_COLORS**: A `MODEL_COLORS` dict is currently redefined inline in cells 11, 20, and 30 of `notebooks/03_adme_experiments.ipynb`. Extract it to `src/plotting` as a module-level constant so any notebook can `from src.plotting import MODEL_COLORS`.
+
+---
+
 **Last Updated**: 2026-07-10 | **Status**: Active | **Maintainer**: Zarif

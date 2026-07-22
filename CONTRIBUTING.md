@@ -30,3 +30,7 @@ After completing any non-trivial change, ask: **"Which docs does this affect?"**
 ## Contact
 
 This is a research project for academic purposes. For questions or feedback, open an issue in the repository or contact Zarif directly.
+
+---
+
+**Last Updated**: 2026-07-20

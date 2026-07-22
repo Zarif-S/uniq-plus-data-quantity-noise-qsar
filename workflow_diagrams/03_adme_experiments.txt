@@ -8,7 +8,7 @@
  ┌─────────────────────────────────────────────────────────────────────────┐
  │ Config flags:  RUN_LEARNING_CURVES   (Phase 4)                          │
  │                RUN_NOISE_INJECTION   (Phase 5)                          │
- │                RUN_MPNN2_EXPERIMENTS (future)                           │
+ │                RUN_MPNN2_EXPERIMENTS (Section 5, gated)                 │
  └─────────────────────────────────────────────────────────────────────────┘
 
 ════════════════════ SECTION 1: DATA LOADING & PREPARATION ══════════════════
@@ -20,7 +20,10 @@
  For each of 4 endpoints (HLM, MDR1, SOL, RLM):
  ┌──────────────────────────────────────────────────────────────────────────┐
  │  1. filter_endpoint(df, col)         → drop NaN rows                    │
- │  2. morgan_fingerprints(radius=2, nBits=2048)  → X (n × 2048)          │
+ │  2. rdkit_2d_features()  → X (n × 200)                                  │
+ │       [200 normalised RDKit descriptors via descriptastorus]             │
+ │       NOTE: same feature space as nb01 §2.3b & §3.1 (confirmed better   │
+ │             than Morgan ECFP4 for tabular models in nb01 §2.3b)         │
  │  3. train_test_split(test_size=0.2, random_state=42)                    │
  │       → X_train, X_test, y_train, y_test                                │
  │  4. Store in  ep_data[col]                                               │
@@ -29,6 +32,8 @@
                       ▼
     ep_data  — fixed train/test splits for all experiments
     NOTE: test set is held out clean for the entire notebook
+    NOTE: ep_data is a dict keyed by endpoint col — each endpoint has a
+          different N after filter_endpoint drops NaN rows (e.g. HLM ≠ MDR1)
 
 ══════════════ SECTION 2: LEARNING CURVES — Phase 4 ═════════════════════════
 
@@ -48,7 +53,9 @@
  │  tune_rf(X_tune_r, y_tune_r, X_val_r, y_val_r, n_iter=50)              │
  │    → rf_params                                                           │
  │                                                                          │
- │  Special case frac=1.0:  X_ref = X_train  (matches nb01 section 3.1)   │
+ │  Special case frac=1.0:  X_ref = X_train  (no subsample)                │
+ │    → same 80/20 val partition as nb01 §3.1 (both use RDKit 2D 200-dim)  │
+ │    → nb01 .json params compatible but nb03 re-tunes per condition anyway │
  └───────────────────────────────────┬─────────────────────────────────────┘
                                      │
                       ▼ inner loop: 10 seeds per (endpoint, fraction)
@@ -62,12 +69,13 @@
  │    • RandomForest(n_estimators=100)                                      │
  │    • LightGBM(n_estimators=100)                                          │
  │                                                                          │
- │  TUNED ARM  (frozen params from tune step)   2 models                   │
+ │  TUNED ARM  (frozen params from tune step above — seed=99)   2 models   │
  │    • LightGBM(lgbm_params)                                               │
  │    • RandomForest(rf_params)                                             │
  │                                                                          │
  │  All models: .fit(X_sub, y_sub)                                          │
- │  evaluate_model(model, X_test, y_test)  →  R², RMSE, MSE               │
+ │  evaluate_model(model, X_test, y_test)  →  R², RMSE, MSE, MAE,         │
+ │                                             Spearman, CCC               │
  │  Append row to lc_rows                                                   │
  └──────────────────────────────────────────────────────────────────────────┘
                       │
@@ -120,12 +128,13 @@
  │    • RandomForest(n_estimators=100)                                      │
  │    • LightGBM(n_estimators=100)                                          │
  │                                                                          │
- │  TUNED ARM  (frozen params from tune step)   2 models                   │
+ │  TUNED ARM  (frozen params from tune step above — seed=99)   2 models   │
  │    • LightGBM(lgbm_params)                                               │
  │    • RandomForest(rf_params)                                             │
  │                                                                          │
  │  All models: .fit(X_train, y_noisy)                                      │
- │  evaluate_model(model, X_test, y_test)  ←  test always CLEAN           │
+ │  evaluate_model(model, X_test, y_test)  ←  test always CLEAN            │
+ │    → R², RMSE, MSE, MAE, Spearman, CCC                                  │
  │  Append row to noise_rows                                                │
  └──────────────────────────────────────────────────────────────────────────┘
                       │
@@ -138,33 +147,139 @@
    • Summary tables — mean R² ± std per (model, endpoint, noise level)
    • Noise degradation plots — R² vs noise level (3 types × 4 endpoints grid)
 
+──────────── SECTION 3.2a: THEORETICAL NOISE CEILING (Gaussian only) ────────
+
+ cell: noise_ceiling
+
+ Theory:  For Gaussian noise σ applied to training labels, the R² ceiling on
+          a NOISY val/CV set is:
+
+          R²_ceiling  =  1  −  σ² / (Var(y) + σ²)
+
+          Derivation: best predictor is ŷ = E[y|x] = y_clean (noise ⊥ x).
+          Evaluated against y_noisy = y_clean + ε via sklearn R²:
+            R² = 1 − E[(y_noisy − ŷ)²] / Var(y_noisy)
+               = 1 − σ² / (Var(y_clean) + σ²)
+          The denominator is Var(y_noisy), not Var(y_clean) — this is the
+          standard sklearn convention and why ceiling = 0.5 (not 0) at σ=std.
+
+ Ceiling values (analytical, using standard sklearn R²):
+ ┌───────────────────────────────────┬──────────────────────────────────────┐
+ │  Noise level (k = σ/std)          │  R²_ceiling  =  1 / (1 + k²)        │
+ ├───────────────────────────────────┼──────────────────────────────────────┤
+ │  σ = 0.0 × std  (k=0.0)          │  1.0                                 │
+ │  σ = 0.1 × std  (k=0.1)          │  1/1.01 ≈ 0.990                      │
+ │  σ = 0.3 × std  (k=0.3)          │  1/1.09 ≈ 0.917                      │
+ │  σ = 0.5 × std  (k=0.5)          │  1/1.25 = 0.800                      │
+ │  σ = 1.0 × std  (k=1.0)          │  1/2.00 = 0.500                      │
+ └───────────────────────────────────┴──────────────────────────────────────┘
+ Scope: Gaussian only — systematic bias and gross errors have no closed-form
+        ceiling; their ceiling is not derived here.
+
+ Compute cell:
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  from noiseestimator import NoisEstimator   # v0.0.1                    │
+ │                                                                          │
+ │  for col in endpoints:                                                   │
+ │      y_train = ep_data[col]["y_train"]                                   │
+ │      for sigma_level in [0.0, 0.1, 0.3, 0.5, 1.0]:                     │
+ │          est = NoisEstimator(dataset=pd.Series(y_train), ...)            │
+ │          ceiling_by_ep[col][sigma_level] = est.bootstrap_distribution() │
+ │                                                                          │
+ │  Print summary table: median ceiling ± (5th–95th pct) per endpoint      │
+ └──────────────────────────────────────────────────────────────────────────┘
+
+ > Interpretation:
+ > Model curves can EXCEED the ceiling when evaluated on a CLEAN test set
+ > (as in this notebook — test is always clean).  The ceiling binds when
+ > using NOISY validation during CV/tuning or in field deployment.
+ > This explains why tuned models may under-perform at high noise: the val
+ > signal used during RandomizedSearchCV is itself corrupted.
+
+ Noise degradation plots (Gaussian row only):
+   • Dotted grey line  — median R²_ceiling per endpoint
+   • Light grey band   — 5th–95th percentile from bootstrap
+   • Legend shown on Gaussian col_idx=0 axis only
+
 ══════════════════════ SECTION 4: SAVE RESULTS ══════════════════════════════
 
  cell: save_results
 
  ┌──────────────────────────────────────────────────────────────────────────┐
- │  lc_results     →  data/processed/learning_curve_results.csv            │
- │  noise_results  →  data/processed/noise_injection_results.csv           │
+ │  lc_results          →  data/processed/learning_curve_results.csv       │
+ │  noise_results       →  data/processed/noise_injection_results.csv      │
+ │  mpnn_noise_results  →  data/processed/mpnn_noise_results.csv           │
+ │                          (conditional on RUN_MPNN2_EXPERIMENTS flag)    │
  └──────────────────────────────────────────────────────────────────────────┘
+
+════════════ SECTION 5: MPNN2 — NOISE ROBUSTNESS (gated) ═══════════════════
+
+ Gate:  RUN_MPNN2_EXPERIMENTS = True / False
+
+ Scope:  frac=1.0 only (full training set, no subsampling)
+         4 endpoints × selected noise conditions × 5 seeds
+
+ Selected noise levels (~9 conditions, not all 15):
+ ┌──────────────────────────────────────┬──────────────────────────────────┐
+ │  Gaussian σ                          │ 0.0, 0.3, 1.0 × std             │
+ │  Systematic bias                     │ 0.0, 0.3, 1.0 × std             │
+ │  Gross errors                        │ 0.0, 0.05, 0.20                 │
+ └──────────────────────────────────────┴──────────────────────────────────┘
+ Total: 9 conditions × 4 endpoints × 5 seeds = 180 ChemProp runs  (~5–9h)
+
+ Architecture:
+   MPNN2 — ChemProp graph encoder + rdkit_2d_normalized features
+   (same as nb01 §2.6; no graph-only variant)
+   No hyperparameter tuning — early stopping via internal val split,
+   fixed architecture.
+
+ ┌──────────────────────────────────────────────────────────────────────────┐
+ │  for col in endpoints:                                                   │
+ │    for (noise_type, level) in selected_conditions:                       │
+ │      for seed in range(5):                                               │
+ │          y_noisy = noise_fn(y_train, level, seed)                        │
+ │          train MPNN2 on (X_train, y_noisy)                               │
+ │          evaluate_model(mpnn2, X_test, y_test)   ← test always CLEAN    │
+ │            → R², RMSE, MSE, MAE, Spearman, CCC                          │
+ │          Append row to mpnn_noise_rows                                   │
+ └──────────────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+ mpnn_noise_results  DataFrame  (180 rows)
+
+ Outputs:
+   • mpnn_noise_results  →  data/processed/mpnn_noise_results.csv
+   • Overlay plots: MPNN2 noise curves alongside LightGBM / RF for comparison
 
 ═══════════════════════════════════════════════════════════════════════════════
 
  KEY DESIGN CHOICES
  ──────────────────
  • Test set always CLEAN — noise and subsampling affect training data only
+ • Featurisation: RDKit 2D (200-dim) for all tabular models — confirmed better
+   than Morgan ECFP4 (2048-dim) in nb01 §2.3b; same feature space as nb01 §3.1
  • Tune once per condition, outside seed loop — 10× speedup, valid comparison
  • Reference seed = 99 for tuning subsample — reproducible across runs
- • frac=1.0 learning curve → X_ref = X_train, same val partition as nb01 §3.1
- • Tuned arm params frozen for all 10 seeds in a condition — fair comparison
+ • frac=1.0 → X_ref = X_train; val partition matches nb01 §3.1 (both RDKit 2D)
+ • Tuned arm params frozen for all 10 seeds per condition — fair comparison
+ • Noise ceiling (§3.2a): Gaussian only, formula-based; shown in plots as
+   dotted line + band; model can exceed ceiling on clean test (ceiling binds
+   on noisy val/CV and field deployment)
+ • MPNN2 (§5): 5 seeds, 9 conditions, frac=1.0 — less rigorous than tabular
+   loops but runtime-practical (~5–9h); gated by RUN_MPNN2_EXPERIMENTS flag
+ • MPNN2 architecture fixed: graph + rdkit_2d_normalized (consistent with nb01 §2.6)
 
  OUTPUTS
  ───────
  ┌────────────────────────────────────────────────────────────────────────────┐
- │  lc_results     1440 rows: ep × fraction × seed × model                  │
- │  noise_results  3600 rows: ep × condition × seed × model                 │
+ │  lc_results          1440 rows: ep × fraction × seed × model             │
+ │  noise_results       3600 rows: ep × condition × seed × model            │
+ │  mpnn_noise_results   180 rows: ep × condition × seed (MPNN2, gated)     │
  │                                                                            │
  │  data/processed/learning_curve_results.csv                                │
  │  data/processed/noise_injection_results.csv                               │
+ │  data/processed/mpnn_noise_results.csv   (if RUN_MPNN2_EXPERIMENTS)      │
  │                                                                            │
- │  Figures: learning curves (R² vs fraction), noise degradation grids       │
+ │  Figures: learning curves (R² vs fraction), noise degradation grids,     │
+ │           Gaussian noise ceiling bands, MPNN2 overlay plots               │
  └────────────────────────────────────────────────────────────────────────────┘

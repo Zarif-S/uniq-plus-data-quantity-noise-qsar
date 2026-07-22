@@ -16,11 +16,12 @@
 ### Current Status
 ✅ Environment set up and pinned (pyproject.toml + uv.lock)
 ✅ ADME public dataset loaded (3521 compounds, 6 endpoints)
-🔄 Exploratory data analysis
-⏳ Baseline ML models (RF, XGBoost, LightGBM)
+✅ EDA complete (ADME + PDE10A)
+✅ Baseline ML models (MeanPredictor, Ridge, BayesianRidge, RF, XGBoost, LightGBM)
+✅ Hyperparameter tuning (LightGBM, RF on RDKit2D; MPNN2 early stopping)
+🔄 Deep learning models (MPNN2 trained; graph-only MPNN in progress)
 ⏳ Data quantity experiments (learning curves)
 ⏳ Label noise experiments
-⏳ Deep learning models (ChemProp, DeepChem)
 
 ---
 
@@ -38,11 +39,15 @@
 │ Review recent changes            → CHANGELOG.md               │
 │ Cross-concept event flows        → SYNCHRONIZATIONS.md        │
 ├────────────────────────────────────────────────────────────────┤
-│ src/ modules (EDA, Features, Plotting) → src/CLAUDE.md        │
-│ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md│
-│ Models module (baselines, evaluation)  → src/models/CLAUDE.md  │
-│ Splitting module (PDE10A 7 strategies) → src/splitting/CLAUDE.md│
-│ Tuning module (LightGBM, MPNN2)        → src/tuning/CLAUDE.md   │
+│ src/ modules (overview + pipeline)     → src/CLAUDE.md          │
+│ EDA module                             → src/eda/CLAUDE.md       │
+│ Features module (FCFP4, RDKit2D)       → src/features/CLAUDE.md  │
+│ Plotting module                        → src/plotting/CLAUDE.md  │
+│ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md  │
+│ Models module (baselines, evaluation)  → src/models/CLAUDE.md    │
+│ Splitting module (PDE10A 7 strategies) → src/splitting/CLAUDE.md │
+│ Tuning module (LightGBM, MPNN2)        → src/tuning/CLAUDE.md    │
+│ Noise module (label injection)         → src/noise/CLAUDE.md     │
 ├────────────────────────────────────────────────────────────────┤
 │ All logged decisions (ADR)       → DECISIONS.md               │
 │ Process & technical lessons      → LESSONS_LEARNED.md         │
@@ -193,6 +198,6 @@ Your closing message is for someone who saw none of your working steps. Lead wit
 
 ---
 
-**Last Updated**: 2026-07-13 | **Status**: Active development | **Maintainers**: Zarif
+**Last Updated**: 2026-07-20 | **Status**: Active development | **Maintainers**: Zarif
 
 **Docs**: [ROADMAP.md](ROADMAP.md) · [PROJECT_PLAN.md](PROJECT_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [LESSONS_LEARNED.md](LESSONS_LEARNED.md)

@@ -38,3 +38,7 @@ No environment variables required — all datasets are open source and local.
 
 **New to the agentic-coding-framework doc structure used here?**
 See [`docs/agentic-framework-guide.md`](docs/agentic-framework-guide.md).
+
+---
+
+**Last Updated**: 2026-07-20

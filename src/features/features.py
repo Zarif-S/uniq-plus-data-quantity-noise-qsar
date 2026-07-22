@@ -6,13 +6,18 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, rdFingerprintGenerator
 
 
-def morgan_fingerprints(smiles_list, radius=2, n_bits=2048):
+def morgan_fingerprints(smiles_list, radius=2, n_bits=1024, use_features=True):
     """Return (N, n_bits) numpy array of Morgan fingerprints for a list of SMILES.
 
     Raises ValueError for any invalid SMILES — pre-validate with smiles_validity_report.
-    Defaults (radius=2, n_bits=2048) are fixed ECFP4 project constants.
+    Defaults (radius=2, n_bits=1024, use_features=True) match the Fang et al. (2023) FCFP4 setup.
+    use_features=True → FCFP (pharmacophoric atom invariants); False → ECFP (atomic number invariants).
     """
-    morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
+    if use_features:
+        atom_inv = rdFingerprintGenerator.GetMorganFeatureAtomInvGen()
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits, atomInvariantsGenerator=atom_inv)
+    else:
+        morgan_gen = rdFingerprintGenerator.GetMorganGenerator(radius=radius, fpSize=n_bits)
     fps = []
     for smi in smiles_list:
         mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None

@@ -28,6 +28,7 @@ dependencies = [
     "ipywidgets>=8.1.8",
     "setuptools<72",
     "descriptastorus",
+    "noiseestimator>=0.0.1",
 ]
 
 [tool.uv]

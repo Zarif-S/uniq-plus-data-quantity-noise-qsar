@@ -754,6 +754,22 @@ wheels = [
 ]
 
 [[package]]
+name = "noiseestimator"
+version = "0.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+    { name = "seaborn" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ae/73/57e3144a2cce92d9084f3d16113bd78f1ecae714674e64d8b37df9dd8fa0/noiseestimator-0.0.1.tar.gz", hash = "sha256:c45897bf25f1c0eeb3f5accb71940cf634ee76b055fe2e78a4baa33dcf525b01", size = 9928, upload-time = "2024-05-05T19:43:35.036Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e9/be/998d587d94ba7ba2d6b9d0f32e727f1484e637c3debceec4859b85a942cd/noiseestimator-0.0.1-py3-none-any.whl", hash = "sha256:8b4f62cce5e70111551a81542ccc6a8bb7f6fd755c616e3249cc05642db01b6c", size = 7062, upload-time = "2024-05-05T19:43:33.241Z" },
+]
+
+[[package]]
 name = "numpy"
 version = "1.26.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1669,6 +1685,7 @@ dependencies = [
     { name = "lightgbm" },
     { name = "matplotlib" },
     { name = "nbformat" },
+    { name = "noiseestimator" },
     { name = "numpy" },
     { name = "pandas" },
     { name = "plotly" },
@@ -1697,6 +1714,7 @@ requires-dist = [
     { name = "lightgbm", specifier = "==4.3.0" },
     { name = "matplotlib", specifier = "==3.8.2" },
     { name = "nbformat", specifier = ">=5.10.4" },
+    { name = "noiseestimator", specifier = ">=0.0.1" },
     { name = "numpy", specifier = "==1.26.4" },
     { name = "pandas", specifier = "==2.1.4" },
     { name = "plotly", specifier = "==5.18.0" },

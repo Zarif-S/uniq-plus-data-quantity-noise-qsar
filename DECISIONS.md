@@ -230,6 +230,120 @@ Secondary reasons:
 
 ---
 
-**Last Updated**: 2026-07-20
+## ADR-005 — Label Noise Model Definitions
+
+**Date**: 2026-07-21
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+Three types of label noise are injected into `y_train` for Phase 5 and Phase 5b experiments, following the taxonomy of Landrum & Riniker. Each noise type models a distinct real-world assay imperfection. The exact formulations need to be pinned to avoid ambiguity in the writeup.
+
+All noise levels are expressed as fractions of `std(y)` for the endpoint being corrupted, making them scale-invariant across HLM, MDR1, SOL, and RLM.
+
+---
+
+### Formulations
+
+**1. Gaussian noise** (`add_gaussian_noise`) — intra-assay variability
+
+```
+σ = sigma_frac × std(y)
+y_noisy[i] = y[i] + ε[i],   ε[i] ~ N(0, σ²)  for all i
+```
+
+Independent per-label additive noise. Models random measurement error within a single experimental batch (pipetting variability, instrument drift). Levels: `sigma_frac ∈ {0.0, 0.1, 0.3, 0.5, 1.0}`.
+
+**2. Systematic bias** (`add_systematic_bias`) — inter-assay bias
+
+```
+bias = bias_frac × std(y)
+S[i] ~ Bernoulli(0.5) independently per label   (random 50% selection)
+y_noisy[i] = y[i] + bias   if S[i] = 1
+y_noisy[i] = y[i]          if S[i] = 0
+```
+
+A constant positive shift applied to a random half of the training labels. Models inter-assay bias — e.g. two labs running the same assay with a systematic offset between instruments. The shift is one-directional (always positive), so it introduces a net upward shift in the training distribution mean. Levels: `bias_frac ∈ {0.0, 0.1, 0.3, 0.5, 1.0}`.
+
+**3. Gross errors** (`add_gross_errors`) — annotation errors
+
+```
+k = max(1, floor(error_frac × N))
+idx ← k indices sampled without replacement from {0, …, N-1}
+y_noisy[i] = U[y.min(), y.max()]   for i ∈ idx
+y_noisy[i] = y[i]                  for i ∉ idx
+```
+
+Replaces `k` labels with values drawn uniformly from the observed endpoint range. Models annotation errors — transcription mistakes, sample mix-ups, or wrong structure-activity assignments. Clamped to `[y.min(), y.max()]` by design to avoid out-of-distribution outliers. Levels: `error_frac ∈ {0.0, 0.01, 0.05, 0.10, 0.20}`.
+
+---
+
+### Shared Invariants
+
+- `y_train` is never mutated — all functions return a new array
+- `y_test` is never corrupted — noise is applied to training labels only
+- All functions are reproducible given `random_state`
+
+---
+
+### Reference
+
+Landrum, G. & Riniker, S. (taxonomy). Implemented in `src/noise/noise.py`.
+
+---
+
+## ADR-006 — MAE as Hyperparameter Tuning Scoring Metric
+
+**Date**: 2026-07-21
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+`RandomizedSearchCV` requires a scalar scoring function to rank hyperparameter candidates. The natural choices for regression are MSE/RMSE (squared error) or MAE (absolute error). This applies to `tune_lightgbm` and `tune_rf` — the two models that undergo HP search in Phases 3–5b.
+
+---
+
+### Decision
+
+Use `scoring="neg_mean_absolute_error"` (MAE) in `RandomizedSearchCV` for both LightGBM and RF.
+
+---
+
+### Rationale
+
+The tuning functions are used in two contexts:
+
+1. **Phase 3 (clean data reference tuning)** — noise is absent; MSE and MAE would select similar configurations
+2. **Phases 4–5b (re-tuning under noise)** — `y_train` contains corrupted labels
+
+In context 2, MSE is problematic: squared error amplifies the contribution of corrupted labels quadratically. A small number of gross errors or large Gaussian draws dominates the validation score, steering HP search away from configurations that generalise on clean labels. MAE treats all residuals linearly, so corrupted labels degrade the tuning signal proportionally rather than disproportionately.
+
+Using MAE consistently across both contexts (rather than switching metric by phase) keeps the tuning behaviour comparable and avoids introducing a confound between the clean and noisy arms.
+
+---
+
+### Fairness of baseline vs tuned comparison
+
+The MAE scoring applies only to HP selection, not to the training objective. Both baseline and tuned models train with squared error loss (LightGBM: `objective='regression_l2'`, RF: `criterion='squared_error'`). The only difference between arms is which hyperparameters are used — which is precisely the confound the experiment is designed to measure. There is no metric confound between arms.
+
+An alternative design would switch the training objective to MAE across all models, making training loss consistent with the HP selection metric. This was considered and rejected: Ridge and BayesianRidge do not support MAE as a training objective, so a consistent switch is not possible without dropping those models; and MSE-trained models are standard in QSAR benchmarks, making results more directly comparable to published work.
+
+---
+
+### Scope
+
+Only `tune_lightgbm` and `tune_rf` are affected. XGBoost, BayesianRidge, and MeanPredictor are not tuned and use their library defaults for training loss (squared error throughout).
+
+The MPNN2 tuned arm uses `metric='mae'` in ChemProp's early stopping for the same reason (see `_run_mpnn2` in `03_adme_experiments.ipynb`); the MPNN2 baseline arm uses ChemProp's default `metric='rmse'`. Note that in ChemProp 1.6.1 `--metric` controls the early stopping criterion only — the training loss is hardcoded to MSE for regression regardless of this flag. So MPNN2 trains with MSE in both arms.
+
+---
+
+**Last Updated**: 2026-07-21
 
 *Add new ADRs above this line, numbered sequentially.*

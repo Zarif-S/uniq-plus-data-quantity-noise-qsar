@@ -17,6 +17,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-07-20 — NoiseEstimator theoretical ceiling)
+- `noiseestimator==0.0.1` added as dependency (`uv add NoiseEstimator`)
+- `notebooks/03_adme_experiments.ipynb` §3.2a: theoretical Gaussian noise ceiling via `NoiseEstimator` (Corradi & van Hilten, ChemRxiv 2024; doi:10.26434/chemrxiv-2024-z0pz7) — computes R² = 1 − σ²/Var(y) by bootstrap, overlaid as dotted grey line + shaded band on Gaussian degradation plots only
+- `src/noise/CLAUDE.md`: "Theoretical Ceiling (Gaussian only)" section documenting NoiseEstimator usage, formula, and scope limits
+- `ROADMAP.md` Phase 5: documented theoretical ceiling approach, clean-test vs noisy-eval distinction, and CV-tuner bound interpretation
+- `PROJECT_PLAN.md` Phase 5: added Gaussian ceiling bullet
+
+### Added (2026-07-20 — notebook fixes + doc updates)
+- `src/noise/CLAUDE.md` — concept specification for label noise module
+- `DECISIONS.md` ADR-004: fixed validation set over k-fold CV (Phase 5b rationale)
+- `figures/` — all EDA and baseline plots now saved via plt.savefig in notebook cells
+- `.gitignore`: added models/, __marimo__/, test_notebooks_and_scripts/
+
+### Changed (2026-07-20)
+- `notebooks/01_adme_eda_baseline.ipynb` §2.6: fix ValueError (duplicate ep_short/model rows); comparison table now iterates per feature set with MPNN2/MPNN as reference columns; moved to after §2.6b so mpnn_graph_df is defined first
+- `notebooks/01_adme_eda_baseline.ipynb` §3.1/3.1b/3.3: switch tuning from ECFP4 → RDKit2D
+- `notebooks/01_adme_eda_baseline.ipynb` §3.1b: filter baseline-vs-tuned table to RDKit2D
+- `src/tuning/CLAUDE.md`: updated signatures to reflect X_val, y_val (PredefinedSplit, not cv=5)
+
 ### Added (2026-07-17 — Phase 1/2 updates)
 - `MeanPredictor` (DummyRegressor) added to `get_baseline_models()` — 6 models total; serves as trivial lower bound
 - `src/cleaning/cleaning.py`: `exclude_stereoisomer_pairs` — removes stereoisomer pairs with >3-fold difference on any log-scale endpoint (0 removed from ADME dataset — pre-cleaned by authors)
@@ -61,4 +80,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-**Last Updated**: 2026-07-17
+**Last Updated**: 2026-07-20

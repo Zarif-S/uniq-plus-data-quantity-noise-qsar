@@ -23,7 +23,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 
 | Action | Signature | Description |
 |--------|-----------|-------------|
-| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=2048) → np.ndarray` | Returns (N, n_bits) int array of Morgan (ECFP4) fingerprints |
+| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → np.ndarray` | Returns (N, n_bits) int array of Morgan (FCFP4) fingerprints |
 | `rdkit_descriptors` | `(smiles_list) → pd.DataFrame` | Returns DataFrame of 6 RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds) |
 
 ### Invariants
@@ -33,7 +33,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 - Invalid SMILES raises `ValueError` immediately — callers must pre-validate with `smiles_validity_report` before calling either function
 - `morgan_fingerprints` always returns dtype int with shape `(N, n_bits)`
 - `rdkit_descriptors` always returns exactly 6 columns in order: MW, LogP, TPSA, HBD, HBA, RotBonds
-- Morgan FP defaults (radius=2, n_bits=2048) are fixed project constants matching ECFP4 standard — do not change without a documented reason
+- Morgan FP defaults (radius=2, n_bits=1024, use_features=True) are fixed project constants matching Fang et al. (2023) FCFP4 setup — do not change without a documented reason
 
 ---
 
@@ -42,7 +42,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 ```
 pre-validated SMILES list
         │
-        ├──→ morgan_fingerprints(smiles_list) ──→ np.ndarray (N, 2048)   [tree models: RF, XGBoost, LightGBM]
+        ├──→ morgan_fingerprints(smiles_list) ──→ np.ndarray (N, 1024)   [tree models: RF, XGBoost, LightGBM]
         │
         └──→ rdkit_descriptors(smiles_list)   ──→ pd.DataFrame (N, 6)    [interpretable baselines / EDA]
 ```
@@ -62,7 +62,7 @@ from src.features import morgan_fingerprints
 report = smiles_validity_report(df, smiles_col="SMILES")
 assert report["invalid_count"] == 0, f"Fix {report['invalid_count']} invalid SMILES first"
 
-X = morgan_fingerprints(df["SMILES"].tolist())  # shape (N, 2048)
+X = morgan_fingerprints(df["SMILES"].tolist())  # shape (N, 1024)
 ```
 
 ### Compute RDKit 2D descriptors
@@ -90,7 +90,7 @@ desc = rdkit_descriptors(df["SMILES"].tolist())
 
 **Issue**: `radius` and `n_bits` are exposed as parameters, but varying them mid-project would confound the data quantity and noise experiments (the core research question is about dataset size and noise, not featurizer choice).
 
-**Solution**: Defaults (radius=2, n_bits=2048) match ECFP4 — the standard for QSAR literature. Documented as fixed project constants. Only change with a clear justification and a dedicated experiment branch.
+**Solution**: Defaults (radius=2, n_bits=1024, use_features=True) match the Fang et al. (2023) FCFP4 setup. Documented as fixed project constants. Only change with a clear justification and a dedicated experiment branch.
 
 **Location**: `src/features/features.py:12`
 

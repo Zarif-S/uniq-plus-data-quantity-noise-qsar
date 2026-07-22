@@ -1,8 +1,10 @@
 """Baseline model factory and evaluation utilities for UNIQ+ QSAR experiments."""
 
+import warnings
+
 import numpy as np
 from lightgbm import LGBMRegressor
-from scipy.stats import spearmanr
+from scipy.stats import ConstantInputWarning, spearmanr
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge, Ridge
@@ -45,7 +47,9 @@ def evaluate_model(model, X_test, y_test, y_pred=None):
     y_test = np.asarray(y_test)
     y_pred = np.asarray(y_pred)
     mse = mean_squared_error(y_test, y_pred)
-    rho, _ = spearmanr(y_test, y_pred)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", ConstantInputWarning)
+        rho, _ = spearmanr(y_test, y_pred)
     mean_t, mean_p = np.mean(y_test), np.mean(y_pred)
     std_t, std_p = np.std(y_test), np.std(y_pred)
     cov = np.mean((y_test - mean_t) * (y_pred - mean_p))
