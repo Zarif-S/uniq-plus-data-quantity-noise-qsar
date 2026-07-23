@@ -34,6 +34,18 @@ ls .claude/commands/*.md
 ```
 Also update the `agentic-coding-framework` CLAUDE.md template to include: "⚠ Verify skill files exist before marking as installed."
 
+### Use FCFP4, not ECFP4, for this paper recreation
+
+**Lesson**: When replicating Fang et al. (2023), always use `useFeatures=True` (FCFP4), not `useFeatures=False` (ECFP4). The paper uses FCFP4 throughout — fingerprints, similarity calculations, and featurization. ECFP4 encodes atom identity; FCFP4 encodes pharmacophoric feature class (H-bond donor/acceptor, charge, aromatic, etc.), which is more appropriate for ADME modelling where functional group character matters more than exact atom type.
+
+**Concrete case**: The paper text says "radius 4 (FCFP4)" — follow the code (`radius=2, useFeatures=True`), not the text. The text confuses radius with diameter.
+
 ---
 
-**Last Updated**: 2026-07-10
+### Use Sørensen-Dice similarity, not Tanimoto, for this dataset
+
+**Lesson**: For the Fang et al. (2023) paper recreation, use `DataStructs.BulkDiceSimilarity` (Sørensen-Dice), not Tanimoto. The paper explicitly states Sørensen-Dice in the methods section, and the numbers confirm it: Tanimoto gives mean=0.167 ± 0.059; Sørensen-Dice gives mean=0.282 ± 0.083, matching the paper's reported 0.28 ± 0.08 exactly. Tanimoto is the RDKit default, making it an easy mistake to reach for.
+
+---
+
+**Last Updated**: 2026-07-22

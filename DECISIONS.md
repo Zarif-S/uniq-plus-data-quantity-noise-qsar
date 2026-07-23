@@ -344,6 +344,50 @@ The MPNN2 tuned arm uses `metric='mae'` in ChemProp's early stopping for the sam
 
 ---
 
-**Last Updated**: 2026-07-21
+---
+
+## ADR-007 — Paper Recreation Methodology Decisions (Fang et al. 2023)
+
+**Date**: 2026-07-22
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+Notebook `01.5_adme_biogen_public_recreation.ipynb` reproduces Fang et al. (2023). Several methodology choices required explicit decisions where the paper text was ambiguous, contradicted its own code, or where our implementation differed mechanically but not substantively.
+
+---
+
+### Decisions
+
+**Fingerprint radius — follow code over paper text**
+Paper text states "radius 4 (FCFP4)" — a contradiction (FCFP4 means diameter=4, i.e. radius=2). Source code (`ADME_ML_public.py` line 187) uses `radius=2, nBits=1024, useFeatures=True`. We follow the code: radius=2, FCFP4. Do not use ECFP4 (useFeatures=False).
+
+**Similarity metric — Sørensen-Dice, not Tanimoto**
+Paper methods state Sørensen-Dice explicitly. Using Tanimoto gave mean=0.167 ± 0.059; switching to Dice gave 0.282 ± 0.083, matching the paper's reported 0.28 ± 0.08 exactly. Use `DataStructs.BulkDiceSimilarity` throughout.
+
+**Mol standardization — match paper's standardize() exactly**
+Four steps in order: Cleanup → FragmentParent → Uncharge → TautomerEnumerator.Canonicalize. Implemented in `src/preprocessing/preprocessing.py`. Causes small compound losses (−1 per endpoint for HLM/MDR1/SOL/RLM) due to deduplication after canonical SMILES change — expected, paper would have encountered the same.
+
+**rdMolDes descriptor set — use paper's hand-picked 316, not full RDKit list**
+Paper used a specific subset of 316 rdMolDescriptors calls (not `Descriptors.descList`). Implemented in `src/features/features.py::rdmoldes()`. 9 of 316 require SDF conformers (geometry-dependent) — this drives the decision to load from SDF rather than CSV SMILES.
+
+**MPNN featurization — rdkit_2d_normalized (descriptastorus, 200 features), not rdMolDes**
+The paper's MPNN uses `--features_generator rdkit_2d_normalized` (ChemProp calls descriptastorus internally). This is a different descriptor set from rdMolDes (316). Our `rdkit_2d_features()` calls descriptastorus directly — same 200 features. Do not normalize rdMolDes as a substitute; they are different descriptor sets.
+
+**Cross-validation — GridSearchCV with RepeatedKFold, random fold assignment**
+Paper used `GridSearchCV` with `RepeatedKFold(n_splits=5, n_repeats=3, random_state=128)`. Random fold assignment — not scaffold-based for now, todo later. Temporal splits not applicable to public dataset (no time index).
+
+**Scaling — RobustScaler for SVM and Lasso only, fit on X_train**
+RobustScaler fit_transform on X_train, transform on X_test. Not applied to RF, XGBoost, LightGBM (tree-based, scale-invariant). y values never scaled (already log-transformed in raw data).
+
+**Hybrid feature construction — np.hstack([X_fcfp4, X_rdkit]), FCFP4 first**
+Paper builds hybrid row-by-row via string lists and a CSV round-trip. We use `np.hstack` — mechanically different but produces the same (N, 1340) float64 matrix with the same column order (FCFP4 columns 0–1023, rdMolDes columns 1024–1339).
+
+---
+
+**Last Updated**: 2026-07-22
 
 *Add new ADRs above this line, numbered sequentially.*

@@ -1,0 +1,244 @@
+================================================================================
+  01.5 — ADME Biogen Public Recreation: Workflow Diagram
+  Fang et al. (2023) — DOI: 10.1021/acs.jcim.3c00160
+================================================================================
+
+INPUT
+─────
+  ADME_public_set_3521.csv
+  3521 compounds × 10 columns (6 endpoints + IDs + SMILES + CollectionName)
+  Source: Enamine, eMolecules, WuXi LabNetwork, Mcule
+
+
+STEP 1 — Summary Statistics (Section 2.1)
+──────────────────────────────────────────
+  Compute N, Min, Max, Mean, Median, Std per endpoint
+
+  Result: matches paper Table 2 for HLM, MDR1, SOL, RLM exactly
+
+  Divergence on PPB endpoints — paper augmented with ChEMBL:
+    PPB_H: CSV N=194  vs  paper N=1808  (+1614 from ChEMBL assay CHEMBL3301365)
+    PPB_R: CSV N=168  vs  paper N=885   (+717  from ChEMBL assay CHEMBL3301366)
+  → These are recovered later via SDF loading (Step 4)
+
+
+STEP 2 — Pairwise Similarity (Section 2.2) → Figure 9
+────────────────────────────────────────────────────────
+  Fingerprint:  FCFP4 (radius=2, nBits=1024, useFeatures=True)
+                NOTE: paper text says r=4 but source code (line 187) uses r=2
+                → we follow the code, not the paper text
+
+  Metric:       Sørensen-Dice coefficient
+  Scope:        All pairwise combinations, upper triangle only (~6.2M pairs)
+
+  Result:       Mean = 0.282, Std = 0.083
+                Paper (public dataset): 0.28 ± 0.08  ✓ matches
+
+
+STEP 3 — Preprocessing Checks (Section 2.3)
+─────────────────────────────────────────────
+  Paper defines 4 exclusion criteria. Checked against public CSV:
+
+  Criterion 1 — Stereoisomers (>3-fold difference in any endpoint):
+                Confirmed 0 pairs removed (checked in notebook 01)
+                Dataset appears pre-cleaned by authors
+
+  Criterion 2 — Solubility < 1.0 ug/mL → exclude from HLM and RLM:
+                212 compounds have LOG SOL < 0
+                0 of those overlap with HLM or RLM measurements
+                → no compounds removed; criterion already satisfied
+
+  Criterion 3 — MDR1 recovery > 30%:
+                Raw recovery data not in public CSV — CANNOT VERIFY
+                Assumed pre-applied by dataset authors
+
+  Criterion 4 — PPB plasma stability < 50%:
+                Raw stability data not in public CSV — CANNOT VERIFY
+                Assumed pre-applied by dataset authors
+
+
+STEP 4 — Load SDF Files (Section 2.4)
+───────────────────────────────────────
+  Why SDF and not CSV SMILES?
+    (a) SDF files store mol objects with embedded 2D conformers (atom x,y,z
+        coordinates). Even 2D SDFs (z=0) count as conformers in RDKit.
+        9 of the 316 rdMolDes descriptors are geometry-dependent and require
+        a conformer: CalcPMI1/2/3, CalcAsphericity, CalcEccentricity,
+        CalcInertialShapeFactor, CalcPBF, CalcRadiusOfGyration,
+        CalcSpherocityIndex. Computing these from SMILES would require
+        re-embedding — using the paper's SDF conformers keeps us consistent.
+    (b) SDF files for PPB_H and PPB_R include ChEMBL-augmented compounds
+        not present in the public CSV (recovering PPB data from Step 1)
+
+  6 SDF files loaded (one per endpoint):
+    ADME_HLM.sdf, ADME_MDR1_ER.sdf, ADME_RLM.sdf,
+    ADME_Sol.sdf, ADME_hPPB.sdf, ADME_rPPB.sdf
+
+  ID system mismatch across files:
+    HLM/MDR1/RLM/SOL use 'Vendor ID'
+    PPB_H/PPB_R (ChEMBL-augmented) use 'Internal ID'
+    → Cannot join on mol_id across endpoints
+    → Use canonical SMILES (can_smi) as the common key
+
+  Per-SDF loop:
+    1. Read endpoint value BEFORE standardization (avoids any ambiguity
+       about property survival through mol transformation steps)
+    2. Standardize mol (see Step 5)
+    3. Compute canonical SMILES from standardized mol → join key
+    4. drop_duplicates('can_smi') per endpoint
+
+  Union merge: concat all 6 endpoint DataFrames → drop_duplicates('can_smi')
+               then left-merge each endpoint column back in
+               → df_sdf: 5252 rows × 8 columns
+
+  RDKit log output (info + warnings) during this step is redirected to:
+    data/processed/sdf_standardization.log
+  rather than suppressed — preserves visibility of any genuine issues
+
+
+STEP 5 — Standardization (src/preprocessing/preprocessing.py)
+───────────────────────────────────────────────────────────────
+  Applied to every mol object after SDF load, before computing can_smi.
+  Matches standardize() in ADME_ML_public.py exactly.
+
+  4 steps in order:
+
+    Step 1 — Cleanup
+              Remove Hs, disconnect metal atoms, normalize bonds, reionize
+              (rdMolStandardize.Cleanup)
+
+    Step 2 — FragmentParent
+              If multiple fragments present (salts, counter-ions),
+              keep only the largest organic parent fragment
+              (rdMolStandardize.FragmentParent)
+
+    Step 3 — Uncharge
+              Neutralize charges where chemically valid
+              (rdMolStandardize.Uncharger — instantiated once at module level)
+
+    Step 4 — TautomerEnumerator.Canonicalize
+              Enumerate all possible tautomers, select canonical form
+              (rdMolStandardize.TautomerEnumerator — instantiated once at module level)
+              Note: this step generates benign intermediate kekulization warnings
+              (expected — the enumerator tries and discards invalid candidates)
+              All such output is captured in the log file, not suppressed
+
+  Fallback: if any step raises, falls back to SMILES round-trip;
+            if that also fails, returns mol unchanged. Both cases log a
+            Python warning so failures are visible.
+
+  Effect on compound counts (vs CSV):
+    HLM:   3087 → 3086  (-1)   MDR1: 2642 → 2641  (-1)
+    SOL:   2173 → 2172  (-1)   RLM:  3054 → 3053  (-1)
+    PPB_H:  194 → 1795  (+1601 net after ChEMBL augmentation and dedup)
+    PPB_R:  168 →  876  (+708  net after ChEMBL augmentation and dedup)
+  Losses due to deduplication: standardization changes canonical SMILES
+  (neutralizing charges, removing salts), causing previously distinct
+  compounds to map to the same can_smi → dropped by drop_duplicates
+
+
+STEP 6 — Per-Endpoint Filtering
+────────────────────────────────
+  For each endpoint, select only compounds with a non-NaN measurement:
+    df_sdf[df_sdf[col].notna()]
+
+  Final N per endpoint (post-standardization):
+    HLM: 3086  |  MDR1: 2641  |  SOL: 2172
+    RLM: 3053  |  PPB_H: 1795  |  PPB_R: 876
+
+
+STEP 7 — Featurization (src/features/features.py)
+───────────────────────────────────────────────────
+  Three feature sets computed per endpoint:
+
+  ┌─ X_fcfp4  (N, 1024) — FCFP4 Morgan fingerprints
+  │   Function:  morgan_fingerprints(smiles_list)
+  │   Params:    radius=2, nBits=1024, useFeatures=True
+  │   Type:      Binary (0/1), structural + pharmacophoric
+  │   What it captures: presence/absence of pharmacophoric patterns
+  │               (H-bond donors/acceptors, charges, aromatics, etc.)
+  │               at increasing radii around each atom
+  │   Why FCFP4 not ECFP4: useFeatures=True replaces atom identity
+  │               with pharmacophoric feature class — better for ADME
+  │               where functional group character matters more than
+  │               exact atom type. FCFP4 is what they used in the paper hence why I havent used ECFP4.
+  │   Input:     canonical SMILES from standardized mol (can_smi)
+  │
+  ├─ X_rdkit  (N, 316) — paper's hand-picked rdMolDes descriptor set
+  │   Function:  rdmoldes(mols)
+  │   Input:     RDKit mol objects WITH conformers (from SDF)
+  │   Type:      Continuous, physicochemical
+  │   Composition:
+  │     44 scalar descriptors (TPSA, FractionCSP3, ring counts,
+  │       rotatable bonds, kappa/chi indices, exact MW, etc.)
+  │     14  PEOE_VSA  (partial charge × surface area bins)
+  │     10  SMR_VSA   (molar refractivity × surface area bins)
+  │     12  SlogP_VSA (logP contribution × surface area bins)
+  │     42  MQNs      (molecular quantum numbers — topology counts)
+  │      2  Crippen   (logP, MR from Crippen method)
+  │    192  AUTOCORR2D (2D autocorrelation of atom properties)
+  │   ─────
+  │    316  total
+  │   9 descriptors require the SDF conformer (geometry-dependent):
+  │     CalcPMI1/2/3, CalcAsphericity, CalcEccentricity,
+  │     CalcInertialShapeFactor, CalcPBF, CalcRadiusOfGyration,
+  │     CalcSpherocityIndex
+  │
+  └─ X_hybrid (N, 1340) — FCFP4 concatenated with rdMolDes
+      np.hstack([X_fcfp4, X_rdkit])
+      Order: FCFP4 first, then rdMolDes — matches paper's merge order
+      Rationale: combines complementary information
+        FCFP4 asks "what structural/pharmacophoric patterns are present?"
+        rdMolDes asks "what are the physicochemical properties?"
+        Together they give both structural identity and physical character
+
+  Model-specific feature preprocessing (applied at train/test time, NOT precomputed here):
+  ─────────────────────────────────────────────────────────────────────────────────────────
+  SVM, Lasso (and FCNN per paper):
+    RobustScaler fit_transform on X_train only, transform applied to X_test
+    Why RobustScaler: robust to outliers (uses median/IQR rather than mean/std) — important
+    for rdMolDes which contains descriptors that can have extreme values for drug-like molecules
+    Why fit on X_train only: prevents data leakage — test set statistics must not influence scaling
+    We will use fit_transform on X_train and transform on X_test — functionally identical
+    to the paper's separate fit/transform steps, no need to match their exact code pattern
+
+  MPNN (MPNN_public.py line 34):
+    Uses rdkit_2d_normalized — this is a descriptastorus feature set, NOT a normalized
+    version of rdMolDes. They are different descriptor sets:
+      rdMolDes:            316 hand-picked descriptors (used for all non-MPNN models)
+      rdkit_2d_normalized: 200 descriptors selected and normalized by descriptastorus - this is what was used in the paper
+    ChemProp calls descriptastorus internally when --features_generator rdkit_2d_normalized
+    is passed — it appends these 200 features to the graph representation.
+    Our rdkit_2d_features() in src/features/features.py calls descriptastorus's
+    RDKit2DNormalized directly — same 200 features, skipping the ChemProp middleman.
+    Why normalized: graph representations and appended descriptors need comparable scale
+    so descriptors don't dominate the learned graph features.
+    Status: rdkit_2d_features() exists in src/features/ but NOT YET wired into this
+    notebook — to be added when MPNN is implemented in Section 4
+
+OUTPUT
+──────
+  feat[ep] = {
+    'y':      (N,)       target values (log-scale endpoint measurements)
+    'fcfp4':  (N, 1024)  FCFP4 fingerprints
+    'rdkit':  (N, 316)   rdMolDes descriptors
+    'hybrid': (N, 1340)  FCFP4 + rdMolDes concatenated
+  }
+
+  One entry per endpoint — rows are aligned across y, fcfp4, rdkit, hybrid
+  (row i in all arrays = same compound)
+
+  Ready for: Section 4 — Models & Splits (RepeatedKFold, k=5)
+
+
+PENDING
+───────
+  Section 4 — Models & Splits:
+    Paper's exact train/test split files not yet available (TODO: Zarif)
+    Once available: RF, XGBoost, LightGBM, SVM, Lasso, FCNN, MPNN
+    Evaluation: Pearson r (primary), MAE (domain of applicability analysis)
+
+  Section 5 — Results Comparison:
+    Our Pearson r vs paper's reported values per model per endpoint
+
+================================================================================

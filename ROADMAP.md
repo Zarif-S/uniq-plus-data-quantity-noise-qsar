@@ -8,9 +8,21 @@
 
 ---
 
-## Known Discrepancies with the Paper
+## Known Discrepancies & Confirmed Methodology Notes
 
 - **Fingerprint radius**: The Fang et al. (2023) paper text states "radius 4 (FCFP4)" — but these contradict each other. FCFP4 means diameter=4, which is radius=2. Their code (`ADME_ML_public.py` line 187) correctly uses `radius=2, nBits=1024, useFeatures=True`, i.e. FCFP4. The paper text confuses radius with diameter. We follow the code: radius=2, FCFP4.
+
+- **Similarity metric**: Paper uses Sørensen-Dice coefficient (not Tanimoto) for all pairwise similarity calculations — confirmed in their methods section: *"structural similarity between any two samples was measured using the Sorensen−Dice coefficient based on FCFP4 fingerprints with a folding size of 1024 bits"*. Using Tanimoto gave 0.167 ± 0.059; switching to Dice gave **0.28 ± 0.08**, matching the paper exactly. Use `DataStructs.BulkDiceSimilarity` throughout.
+
+- **Mol standardization**: Applied to every SDF mol before featurization, matching paper's `standardize()` exactly: Cleanup → FragmentParent → Uncharge → TautomerEnumerator.Canonicalize. This causes small compound losses vs CSV counts (1 per endpoint for HLM/MDR1/SOL/RLM) due to deduplication after canonical SMILES change — expected, paper would have encountered the same.
+
+- **rdMolDes descriptor set**: Paper hand-picked 316 descriptors (`rdMolDes`) — not the full RDKit descriptor list. These are implemented in `src/features/features.py::rdmoldes()`. 9 of 316 are geometry-dependent and require SDF conformers (CalcPMI1/2/3, CalcAsphericity, etc.) — this is why SDF files are used rather than CSV SMILES.
+
+- **MPNN featurization**: MPNN uses `rdkit_2d_normalized` (200 descriptors from descriptastorus) — a different set from rdMolDes (316). ChemProp calls descriptastorus internally; our `rdkit_2d_features()` does the same directly. All non-MPNN models use rdMolDes.
+
+- **Cross-validation strategy**: Paper used `GridSearchCV` with `RepeatedKFold(n_splits=5, n_repeats=3, random_state=128)` for the public dataset — random fold assignment (not scaffold-based). Temporal splits not possible on public dataset (no time index).
+
+- **Scaling**: RobustScaler applied for SVM, Lasso, FCNN only — fit_transform on X_train, transform on X_test. Not applied to RF, XGBoost, LightGBM (tree-based, scale-invariant). y values never scaled (already log-transformed in raw data).
 
 ---
 
@@ -20,7 +32,7 @@
 
 **Why this first**: Reproducing published results validates our pipeline, confirms data handling is correct, and establishes credible baselines grounded in the literature. Any deviations from published numbers become a documented, explainable finding rather than an unknown bug.
 
-**Paper**: [TO FILL IN — title, authors, DOI]
+**Paper**: Fang et al. (2023) — *Prospective Validation of Machine Learning Algorithms for Absorption, Distribution, Metabolism, and Excretion Prediction: An Industrial Perspective*. DOI: 10.1021/acs.jcim.3c00160
 
 ---
 

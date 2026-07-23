@@ -23,7 +23,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 
 | Action | Signature | Description |
 |--------|-----------|-------------|
-| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → np.ndarray` | Returns (N, n_bits) int array of Morgan (FCFP4) fingerprints |
+| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024) → np.ndarray` | Returns (N, n_bits) int array of FCFP4 fingerprints (always useFeatures=True) |
 | `rdkit_descriptors` | `(smiles_list) → pd.DataFrame` | Returns DataFrame of 6 RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds) |
 
 ### Invariants
@@ -33,7 +33,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 - Invalid SMILES raises `ValueError` immediately — callers must pre-validate with `smiles_validity_report` before calling either function
 - `morgan_fingerprints` always returns dtype int with shape `(N, n_bits)`
 - `rdkit_descriptors` always returns exactly 6 columns in order: MW, LogP, TPSA, HBD, HBA, RotBonds
-- Morgan FP defaults (radius=2, n_bits=1024, use_features=True) are fixed project constants matching Fang et al. (2023) FCFP4 setup — do not change without a documented reason
+- Morgan FP defaults (radius=2, n_bits=1024, useFeatures=True fixed) are fixed project constants matching Fang et al. (2023) FCFP4 setup — do not change without a documented reason
 
 ---
 
