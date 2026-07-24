@@ -51,3 +51,4 @@ __marimo__/
 
 # Scratch/exploratory scripts not part of the project
 test_notebooks_and_scripts/
+data/processed/section4_splits.pkl

@@ -29,6 +29,7 @@ dependencies = [
     "setuptools<72",
     "descriptastorus",
     "noiseestimator>=0.0.1",
+    "statsmodels>=0.14.6",
 ]
 
 [tool.uv]

@@ -216,8 +216,8 @@ STEP 7 — Featurization (src/features/features.py)
     Status: rdkit_2d_features() exists in src/features/ but NOT YET wired into this
     notebook — to be added when MPNN is implemented in Section 4
 
-OUTPUT
-──────
+OUTPUT (Section 3)
+──────────────────
   feat[ep] = {
     'y':      (N,)       target values (log-scale endpoint measurements)
     'fcfp4':  (N, 1024)  FCFP4 fingerprints
@@ -228,17 +228,125 @@ OUTPUT
   One entry per endpoint — rows are aligned across y, fcfp4, rdkit, hybrid
   (row i in all arrays = same compound)
 
-  Ready for: Section 4 — Models & Splits (RepeatedKFold, k=5)
+
+STEP 8 — Split Strategy (Section 4.1)
+───────────────────────────────────────
+  Paper has NO scaffold or temporal split for the PUBLIC dataset:
+    - Temporal splits were used for their in-house Biogen dataset only (has assay-date
+      metadata); the public set (Enamine/eMolecules/WuXi/Mcule) has no time index.
+    - No evidence of scaffold splitting anywhere in ADME_ML_public.py for the public arm.
+    - Confirmed by reading their source directly (both 'validation' and 'optimization'
+      workflows use the identical procedure below).
+
+  Paper's actual procedure, reproduced exactly here:
+    1. shuffle(X_data, Y_data, random_state=42)             — shuffle full endpoint dataset
+    2. train_test_split(test_size=0.2, random_state=84)     — ONE random 80/20 split
+       → not stratified, not scaffold-based, not temporal — plain random holdout
+    3. RobustScaler().fit(X_train) → transform(X_train), transform(X_test)
+       — SVM/Lasso/FCNN only; RF/XGBoost/LightGBM/MPNN use unscaled features
+
+  Our implementation (cell 49, `splits[(ep, fs)]`):
+    Same shuffle(random_state=42) → train_test_split(random_state=84) sequence,
+    applied per (endpoint, featureset) pair → 4 endpoints × 3 featuresets = 12 splits.
+    RobustScaler fit on X_train only (fit then transform, not fit_transform — functionally
+    identical, paper just does it as two separate calls).
+
+  → Confirmed match: identical split mechanism, identical random states.
+
+  Scaffold split (Bemis-Murcko, section 4.3): explored as a TODO/extension, not part of
+  the paper recreation — deferred until after Section 5 is complete (src `datamol`/RDKit
+  Bemis-Murcko clustering, `df['scaffold_cluster']`).
+
+
+STEP 9 — Cross-Validation: what's repeated, what isn't (Section 4.0–4.2)
+────────────────────────────────────────────────────────────────────────
+  Two DIFFERENT CV schemes appear in the paper's script — easy to conflate them:
+
+  (a) Hyperparameter tuning ('optimization' workflow, `GridSearchCV`):
+        cv=5  →  PLAIN 5-fold CV, single pass, NOT repeated (sklearn's default KFold splitter)
+        Confirmed at every GridSearchCV call site in ADME_ML_public.py (RF, SVM, Lasso: one
+        stage each; XGBoost: 5 staged calls; LightGBM: 4 staged calls — each individual
+        GridSearchCV call uses cv=5, no repeats)
+        Runs on X_train only, staged (XGBoost/LightGBM): fit stage → lock in best_params_ →
+        next stage uses locked params as the new base, on top of a fresh cv=5 grid search.
+
+  (b) Reported CV Pearson r metric (`model_validation()` function):
+        rkf = RepeatedKFold(n_splits=5, n_repeats=3, random_state=128)
+        cv_pearson_r = mean(cross_val_score(model, X_train, Y_train, scoring=pearson_scorer, cv=rkf))
+        → This genuinely IS sklearn's RepeatedKFold class — 5-fold, repeated 3 times =
+          15 fold-fits total, Pearson r computed per fold, then averaged.
+        → All 15 refit models here are diagnostic only and discarded once averaged.
+        → Separately, model.fit(X_train, Y_train) fits ONE production model on the FULL
+          X_train (no CV) — Pearson_r_test = Pearson r of that model's predictions vs
+          Y_test on the held-out 20%.
+
+  So: yes, they used real RepeatedKFold — not a loose "5-fold x3" description — but only
+  for the reported validation metric, not for hyperparameter search (which is plain 5-fold).
+
+  Our implementation matches both exactly (src/models/paper_models.py):
+    - tune_paper_model(): GridSearchCV(cv=5, scoring='r2'), staged via PARAM_GRID_STAGES
+      (src/hyperparams/hyperparams.py — param_search1_XGB..5_XGB, param_search1_LGB..4_LGB)
+    - model_validation(): RepeatedKFold(n_splits=5, n_repeats=3, random_state=128) via
+      cross_val_score, same production-model-fit-once-on-full-X_train logic
+    - cv_scores (the 15 individual fold Pearson r values) are persisted per (endpoint,
+      featureset, model, arm) — the paper only kept the mean, we keep the full distribution
+      too, since Section 5.3's boxplots need it.
+
+  → Confirmed match: identical CV class, identical parameters (n_splits, n_repeats,
+    random_state), identical separation of diagnostic-CV vs production-fit.
+
+
+STEP 10 — Model Training & Evaluation Loop (Section 4.2)
+───────────────────────────────────────────────────────────
+  Models: RF, SVM, XGBoost, LightGBM, Lasso (src/models/paper_models.get_paper_models)
+          — matches paper's base hyperparameters (param_base_* in src/hyperparams)
+          — FCNN and MPNN NOT yet implemented (no wrapper exists yet, out of scope so far)
+
+  Two arms per paper design:
+    'base'  — param_base_* defaults only, model_validation() directly    ← RUN (this session)
+    'tuned' — staged GridSearchCV first, then model_validation()         ← NOT YET RUN
+
+  Grid: 4 endpoints (HLM/MDR1/SOL/RLM — PPB_H/PPB_R excluded, too sparse for this stage)
+        × 3 featuresets (fcfp4/rdkit/hybrid) × 5 models × 1 arm (base) = 60 model_validation calls
+
+  Metrics recorded: Pearson_r_CV, Pearson_r_test, MAE
+    Note: the paper's script never computes MAE anywhere (no mean_absolute_error import/usage
+    in ADME_ML_public.py) — whatever domain-of-applicability MAE analysis the paper text
+    describes must live in a separate, unpublished script. We add MAE ourselves
+    (src/metrics.mae) from the same y_pred_test capture used for Pearson_r_test.
+
+  Known artifact (Section 4.2a): Lasso+fcfp4 — alpha=0.1 shrinks all 1024 binary fingerprint
+  coefficients to zero across every endpoint → intercept-only model → constant predictions →
+  Pearson r undefined (NaN). Confirmed as expected model behavior, not a bug — MAE is still
+  well-defined for this case (Section 5.1), only Pearson r columns show NaN (Section 5.2).
+
+  Output: data/processed/section4_paper_recreation_results.csv (rows: endpoint×featureset×
+          model×arm), data/processed/section4_test_predictions.pkl (y_test, y_pred_test,
+          cv_scores per condition), data/processed/section4_splits.pkl
+
+
+STEP 11 — Results Comparison (Section 5)
+───────────────────────────────────────────
+  5.1  MAE summary table (base arm)                                          ✓ DONE
+  5.2  Pearson r summary table (base arm, NaN = Lasso+fcfp4 artifact)        ✓ DONE
+  5.3  Pearson r boxplots per model, per endpoint (Paper's Figure 1)         ✓ DONE — matches
+       Box = 15 RepeatedKFold CV-fold Pearson r scores per model, hybrid featureset
+       (not an exact analog: paper's spread is 20 independent in-house datasets; ours is
+       CV-fold resampling of one train/test split — closest available real distribution)
+  5.3b Effect of molecular representation (fcfp4/rdkit/hybrid) on RF/LightGBM,             ✓ DONE — matches
+       HLM/MDR1 (Paper's Figure 5)
+  5.4  Similarity-binned MAE, RF & LightGBM, HLM/MDR1/RLM/SOL (Paper's Figure 6)             — WIP, needs more work
+  5.5  ANOVA + Tukey HSD post-hoc per endpoint (Paper's items 2 & 3)                          — WIP, needs more work
+  5.6  Effect of hyperparameter tuning (base vs tuned)                                        — PENDING (blocked on
+       'tuned' arm actually being run in Section 4.2; currently `arm in ('base',)` only)
 
 
 PENDING
 ───────
-  Section 4 — Models & Splits:
-    Paper's exact train/test split files not yet available (TODO: Zarif)
-    Once available: RF, XGBoost, LightGBM, SVM, Lasso, FCNN, MPNN
-    Evaluation: Pearson r (primary), MAE (domain of applicability analysis)
-
-  Section 5 — Results Comparison:
-    Our Pearson r vs paper's reported values per model per endpoint
+  Section 4 — 'tuned' arm (Section 4.2, currently commented out) — needed for Section 5.6
+  Section 4.3 — Scaffold split (Bemis-Murcko) exploration — deferred until Section 5 wraps up
+  Section 5.4 — Similarity-binned MAE bar charts — needs more work
+  Section 5.5 — Tukey HSD heatmaps — needs more work
+  FCNN, MPNN — no wrapper implemented yet in src/models
 
 ================================================================================

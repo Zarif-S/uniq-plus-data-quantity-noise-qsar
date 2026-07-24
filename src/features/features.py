@@ -12,6 +12,9 @@ def morgan_fingerprints(smiles_list, radius=2, n_bits=1024):
     Uses AllChem.GetMorganFingerprintAsBitVect with useFeatures=True — matches paper code exactly.
     Defaults (radius=2, n_bits=1024) match Fang et al. (2023) FCFP4 setup.
     Raises ValueError for any invalid SMILES — pre-validate with smiles_validity_report.
+
+    Does NOT standardize input mols — caller is responsible for passing already-standardized
+    SMILES (e.g. via src.preprocessing.standardize) if standardization matters for the study.
     """
     fps = []
     for smi in smiles_list:
@@ -26,6 +29,9 @@ def rdkit_descriptors(smiles_list):
     """Return DataFrame of RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds).
 
     Raises ValueError for any invalid SMILES — pre-validate with smiles_validity_report.
+
+    Does NOT standardize input mols — caller is responsible for passing already-standardized
+    SMILES (e.g. via src.preprocessing.standardize) if standardization matters for the study.
     """
     records = []
     for smi in smiles_list:

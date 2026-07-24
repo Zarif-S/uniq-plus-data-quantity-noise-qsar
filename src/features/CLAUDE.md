@@ -34,6 +34,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 - `morgan_fingerprints` always returns dtype int with shape `(N, n_bits)`
 - `rdkit_descriptors` always returns exactly 6 columns in order: MW, LogP, TPSA, HBD, HBA, RotBonds
 - Morgan FP defaults (radius=2, n_bits=1024, useFeatures=True fixed) are fixed project constants matching Fang et al. (2023) FCFP4 setup — do not change without a documented reason
+- Neither function standardizes input mols — both parse SMILES directly via `Chem.MolFromSmiles`. Caller must pass already-standardized SMILES (via `src.preprocessing.standardize`) upstream if standardization matters; there is no internal safeguard against unstandardized input
 
 ---
 
