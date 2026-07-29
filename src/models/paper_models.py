@@ -21,6 +21,7 @@ from xgboost import XGBRegressor
 
 from src.hyperparams import (
     param_base_BayesianRidge,
+    param_base_FCNN,
     param_base_Lasso,
     param_base_LGB,
     param_base_RF,
@@ -28,6 +29,7 @@ from src.hyperparams import (
     param_base_XGB,
 )
 from src.metrics import pearson_r
+from src.models.fcnn import FCNN
 
 _pearson_scorer = make_scorer(pearson_r, greater_is_better=True)
 
@@ -122,7 +124,8 @@ def get_paper_models(random_state=42):
     hyperparameters. BayesianRidge is deterministic (no random_state) and, like SVM/Lasso, expects
     scaled features — callers must feed it the RobustScaler'd matrices.
 
-    FCNN and MPNN1/MPNN2 still need to be added — no wrapper exists yet for either.
+    FCNN (DeepChem MultitaskRegressor) also expects scaled features. MPNN1/MPNN2 are graph models
+    (SMILES in, no X matrix) and are handled separately in the notebook loop, not here.
     """
     return {
         "RF":            RandomForestRegressor(**param_base_RF, random_state=random_state),
@@ -131,6 +134,7 @@ def get_paper_models(random_state=42):
         "LightGBM":      LGBMRegressor(**param_base_LGB, random_state=random_state, verbose=-1),
         "Lasso":         Lasso(**param_base_Lasso, random_state=random_state),
         "BayesianRidge": BayesianRidge(**param_base_BayesianRidge),
+        "FCNN":          FCNN(**param_base_FCNN, random_state=random_state),
     }
 
 

@@ -8,6 +8,7 @@ from .hyperparams import (
     param_search4_LGB, param_search_LGB,
     param_base_Lasso, param_search_Lasso,
     param_base_BayesianRidge,
+    param_base_FCNN,
     PARAM_GRID_STAGES,
 )
 
@@ -21,5 +22,6 @@ __all__ = [
     "param_search4_LGB", "param_search_LGB",
     "param_base_Lasso", "param_search_Lasso",
     "param_base_BayesianRidge",
+    "param_base_FCNN",
     "PARAM_GRID_STAGES",
 ]

@@ -68,7 +68,10 @@ param_base_BayesianRidge = {}
 
 param_base_MPNN = {'hidden_size': 300, 'depth': 3, 'dropout': 0.0, 'ffn_num_layers': 2}
 
-param_base_FCNN = {'hidden_layers': [512, 256, 64], 'dropout': [0.25, 0.25, 0.10], 'lr': 0.001, 'optimizer': 'adam', 'batch_norm': True, 'weight_decay': 0.0004, 'batch_size': 128, 'activation': 'relu', 'epochs': 50, 'weight_init_stddevs': [0.02]}
+# 'beta1': the paper's Adam "alpha" (0.9) == first-moment/momentum decay (beta1); beta2 left at
+# DeepChem's 0.999 default. 'batch_norm' is recorded for fidelity but unsupported by DeepChem's
+# MultitaskRegressor (ignored with a warning — see src/models/fcnn.py).
+param_base_FCNN = {'hidden_layers': [512, 256, 64], 'dropout': [0.25, 0.25, 0.10], 'lr': 0.001, 'optimizer': 'adam', 'beta1': 0.9, 'batch_norm': True, 'weight_decay': 0.0004, 'batch_size': 128, 'activation': 'relu', 'epochs': 50, 'weight_init_stddevs': [0.02]}
 
 # did i implement weight_init_stddevs correctly?
 

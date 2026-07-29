@@ -93,7 +93,7 @@ def test_evaluate_model_accepts_precomputed_y_pred():
 
 def test_get_paper_models_has_expected_keys():
     models = get_paper_models()
-    assert set(models.keys()) == {"RF", "SVM", "XGBoost", "LightGBM", "Lasso", "BayesianRidge"}
+    assert set(models.keys()) == {"RF", "SVM", "XGBoost", "LightGBM", "Lasso", "BayesianRidge", "FCNN"}
 
 
 def test_get_paper_models_bayesianridge_is_deterministic_estimator():
