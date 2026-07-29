@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from src.features import morgan_fingerprints, rdkit_descriptors, rdmoldes
+from rdkit import DataStructs
+from src.features import morgan_fingerprints, rdkit_descriptors, rdmoldes, fcfp4_bit_vectors
 
 
 ETHANOL = "CCO"
@@ -46,6 +47,38 @@ def test_rdkit_descriptors_columns():
 def test_rdkit_descriptors_values_not_nan():
     df = rdkit_descriptors([ASPIRIN])
     assert not df.iloc[0].isna().any()
+
+
+# --- fcfp4_bit_vectors tests ---
+
+
+def test_fcfp4_bit_vectors_length():
+    fps = fcfp4_bit_vectors([ETHANOL, ASPIRIN])
+    assert len(fps) == 2
+
+
+def test_fcfp4_bit_vectors_are_bitvects():
+    fps = fcfp4_bit_vectors([ETHANOL])
+    assert isinstance(fps[0], DataStructs.cDataStructs.ExplicitBitVect)
+    assert fps[0].GetNumBits() == 1024
+
+
+def test_fcfp4_bit_vectors_invalid_smiles_raises():
+    with pytest.raises(ValueError, match="Invalid SMILES"):
+        fcfp4_bit_vectors(["not_valid"])
+
+
+def test_fcfp4_bit_vectors_usable_with_bulk_similarity():
+    fps = fcfp4_bit_vectors([ETHANOL, ASPIRIN])
+    sims = DataStructs.BulkDiceSimilarity(fps[0], fps)
+    assert len(sims) == 2
+    assert sims[0] == pytest.approx(1.0)
+
+
+def test_fcfp4_bit_vectors_use_features_false_gives_ecfp4_and_differs():
+    ecfp4_fps = fcfp4_bit_vectors([ASPIRIN], use_features=False)
+    fcfp4_fps = fcfp4_bit_vectors([ASPIRIN], use_features=True)
+    assert ecfp4_fps[0].ToBitString() != fcfp4_fps[0].ToBitString()
 
 
 # --- rdmoldes tests ---

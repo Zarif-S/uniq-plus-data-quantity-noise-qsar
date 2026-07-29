@@ -43,8 +43,9 @@ coverage/
 # Python virtual environment
 .venv/
 
-# Trained model artefacts (too large for git)
-models/
+# Trained model artefacts (too large for git) -- top-level dir only.
+# Anchored with a leading slash so it does NOT also ignore src/models/ (source code).
+/models/
 
 # Auto-generated session state
 __marimo__/

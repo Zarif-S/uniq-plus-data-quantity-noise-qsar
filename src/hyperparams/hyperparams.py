@@ -16,7 +16,7 @@ param_search_RF = {'n_estimators': [100, 250, 500, 750, 1000],
 param_base_SVM ={'gamma':'scale'}
 param_search_SVM = {'C':[0.1, 1, 5, 10, 20, 50],
                   'epsilon':[1e-2, 1e-1, 0.3,0.5],
-                  'gamma':['scale','auto']} # 6*5 = 30
+                  'gamma':['scale','auto']} # 48 total
 
 # set up XGBoost parameters (5+15+3+25+25=73)
 param_base_XGB = {'n_estimators': 500, 'subsample':0.8, 'colsample_bytree':0.8, 'n_jobs':n_jobs_model}
@@ -63,6 +63,24 @@ param_search_Lasso = {'alpha':[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]}  # 
 # Ordered sequential tuning stages per model, consumed by src.models.tune_paper_model.
 # RF/SVM/Lasso tune in a single GridSearchCV pass; XGBoost/LightGBM tune in staged passes,
 # each stage locking in its best_params_ before the next stage runs (matches the paper exactly).
+
+param_base_BayesianRidge = {}
+
+param_base_MPNN = {'hidden_size': 300, 'depth': 3, 'dropout': 0.0, 'ffn_num_layers': 2}
+
+param_base_FCNN = {'hidden_layers': [512, 256, 64], 'dropout': [0.25, 0.25, 0.10], 'lr': 0.001, 'optimizer': 'adam', 'batch_norm': True, 'weight_decay': 0.0004, 'batch_size': 128, 'activation': 'relu', 'epochs': 50, 'weight_init_stddevs': [0.02]}
+
+# did i implement weight_init_stddevs correctly?
+
+# MPNN hyperparameters: They used chemprops default hyperopts search space as MPNN S14 matches exactly with the defaults
+# Below not required
+# param_search1_MPNN = {'hidden_size':[300, 400, ...., 2400]} # ?
+# param_search2_MPNN = {'depth':[2, 3, 4, 5, 6]}  # ? * 5 = ?
+# param_search3_MPNN = {'FFN_number_of_layers':[1, 2, 3]} # ?*5*3 = ?
+# param_search4_MPNN = {'dropout':[0, 0.05, ..., 0.4]}  # ?*5*3* = ?
+
+FCNN_ARCHITECTURES = {1: ([512,256,64], [0.25,0.25,0.10]), 2: ([1000,500], [0.25,0.10]), 3: ([2000,1000], [0.25,0.10]), 4: ([200,100,50], [0.25,0.25,0.10]), 5: ([4000,2000,1000,1000], [0.25,0.25,0.25,0.10])}
+
 PARAM_GRID_STAGES = {
     "RF":       [param_search_RF],
     "SVM":      [param_search_SVM],
@@ -71,4 +89,5 @@ PARAM_GRID_STAGES = {
     "Lasso":    [param_search_Lasso],
 }
 
-# Need to incude MPNN and FCNN, note could not find MPNN hyperparams, MPNN, could find but doesnt quite match up with code and S15 table and /FCNN_public.py
+# MPNN hyperparams: chemprop defaults: hidden_size=300, depth=3, dropout=0.0, ffn_num_layers=2
+# 

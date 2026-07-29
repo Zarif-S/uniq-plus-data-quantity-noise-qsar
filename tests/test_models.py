@@ -3,7 +3,16 @@
 import numpy as np
 import pytest
 from src.hyperparams import PARAM_GRID_STAGES
-from src.models import evaluate_model, get_baseline_models, get_paper_models, model_validation, tune_paper_model
+from src.models import (
+    evaluate_model,
+    get_baseline_models,
+    get_paper_models,
+    invalidate_checkpoint,
+    load_eval_checkpoint,
+    model_validation,
+    run_checkpointed_eval,
+    tune_paper_model,
+)
 
 
 def test_get_baseline_models_has_expected_keys():
@@ -84,7 +93,14 @@ def test_evaluate_model_accepts_precomputed_y_pred():
 
 def test_get_paper_models_has_expected_keys():
     models = get_paper_models()
-    assert set(models.keys()) == {"RF", "SVM", "XGBoost", "LightGBM", "Lasso"}
+    assert set(models.keys()) == {"RF", "SVM", "XGBoost", "LightGBM", "Lasso", "BayesianRidge"}
+
+
+def test_get_paper_models_bayesianridge_is_deterministic_estimator():
+    from sklearn.linear_model import BayesianRidge
+    model = get_paper_models()["BayesianRidge"]
+    assert isinstance(model, BayesianRidge)
+    assert "random_state" not in model.get_params()   # deterministic, no seed
 
 
 def test_get_paper_models_are_unfitted_and_fresh():
@@ -154,3 +170,136 @@ def test_model_validation_nan_cv_folds_do_not_poison_mean():
         result = model_validation(model, X_train, y_train, X_test, y_test, n_repeats=1)
     assert np.isnan(result["Pearson_r_CV"])
     assert np.isnan(result["cv_scores"]).all()
+
+# --- run_checkpointed_eval -------------------------------------------------
+
+def _counting_compute():
+    """Return (compute_one, calls) where compute_one records each key it actually computes."""
+    calls = []
+
+    def compute_one(key):
+        calls.append(key)
+        ep, fs, model, arm = key
+        row = {"endpoint": ep, "featureset": fs, "model": model, "arm": arm, "MAE": len(calls) * 1.0}
+        pred = {"y_pred_test": np.array([len(calls)])}
+        return row, pred
+
+    return compute_one, calls
+
+
+def test_run_checkpointed_eval_computes_all_on_empty(tmp_path):
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    keys = [("HLM", "fcfp4", "RF", "base"), ("HLM", "fcfp4", "SVM", "base")]
+    compute_one, calls = _counting_compute()
+    results_df, predictions = run_checkpointed_eval(keys, compute_one, rp, pp, verbose=False)
+    assert calls == keys                       # both computed
+    assert len(results_df) == 2 and len(predictions) == 2
+    assert rp.exists() and pp.exists()         # both files persisted
+
+
+def test_run_checkpointed_eval_skips_existing(tmp_path):
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    keys = [("HLM", "fcfp4", "RF", "base"), ("HLM", "fcfp4", "SVM", "base")]
+    # First pass computes both.
+    run_checkpointed_eval(keys, _counting_compute()[0], rp, pp, verbose=False)
+    # Second pass with a fresh counter must recompute nothing.
+    compute_one, calls = _counting_compute()
+    results_df, predictions = run_checkpointed_eval(keys, compute_one, rp, pp, verbose=False)
+    assert calls == []                         # nothing recomputed
+    assert len(results_df) == 2 and len(predictions) == 2
+
+
+def test_run_checkpointed_eval_computes_only_new_keys(tmp_path):
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    first = [("HLM", "fcfp4", "RF", "base")]
+    run_checkpointed_eval(first, _counting_compute()[0], rp, pp, verbose=False)
+    # Add a new key alongside the already-done one.
+    both = first + [("HLM", "fcfp4", "SVM", "base")]
+    compute_one, calls = _counting_compute()
+    results_df, predictions = run_checkpointed_eval(both, compute_one, rp, pp, verbose=False)
+    assert calls == [("HLM", "fcfp4", "SVM", "base")]   # only the new one
+    assert len(results_df) == 2 and len(predictions) == 2
+
+
+def test_run_checkpointed_eval_dedupes_stale_csv_row(tmp_path):
+    # Simulate a crash-between-writes: a results row exists on disk but its key is absent
+    # from the predictions checkpoint. The next run must recompute it and leave exactly one row.
+    import joblib
+    import pandas as pd
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    key = ("HLM", "fcfp4", "RF", "base")
+    pd.DataFrame([{"endpoint": "HLM", "featureset": "fcfp4", "model": "RF", "arm": "base", "MAE": 99.0}]).to_csv(rp, index=False)
+    joblib.dump({}, pp)                        # predictions empty -> key looks 'not done'
+    compute_one, calls = _counting_compute()
+    results_df, _ = run_checkpointed_eval([key], compute_one, rp, pp, verbose=False)
+    assert calls == [key]                      # recomputed
+    assert len(results_df) == 1                # stale duplicate dropped, not two rows
+    assert results_df.iloc[0]["MAE"] == 1.0    # fresh value kept, not the stale 99.0
+
+
+def test_load_eval_checkpoint_absent_returns_empty(tmp_path):
+    results_df, predictions = load_eval_checkpoint(tmp_path / "nope.csv", tmp_path / "nope.pkl")
+    assert results_df.empty and predictions == {}
+
+
+# --- invalidate_checkpoint -------------------------------------------------
+
+def _seed_checkpoint(tmp_path, keys):
+    """Compute a fresh checkpoint over `keys` and return (results_path, predictions_path)."""
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    run_checkpointed_eval(keys, _counting_compute()[0], rp, pp, verbose=False)
+    return rp, pp
+
+
+_KEYS = [
+    ("HLM", "fcfp4", "RF", "base"),
+    ("HLM", "fcfp4", "SVM", "base"),
+    ("MDR1", "hybrid", "RF", "base"),
+]
+
+
+def test_invalidate_checkpoint_by_model_removes_from_both_files(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    removed = invalidate_checkpoint(rp, pp, model="RF")
+    assert removed == 2                                    # both RF keys
+    results_df, predictions = load_eval_checkpoint(rp, pp)
+    assert set(predictions.keys()) == {("HLM", "fcfp4", "SVM", "base")}
+    assert results_df["model"].tolist() == ["SVM"]        # CSV pruned too
+
+
+def test_invalidate_checkpoint_multiple_filters_are_anded(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    removed = invalidate_checkpoint(rp, pp, model="RF", endpoint="HLM")
+    assert removed == 1                                    # only HLM+RF, not MDR1+RF
+    _, predictions = load_eval_checkpoint(rp, pp)
+    assert ("MDR1", "hybrid", "RF", "base") in predictions
+
+
+def test_invalidate_checkpoint_collection_value(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    removed = invalidate_checkpoint(rp, pp, featureset={"hybrid", "fcfp4"})
+    assert removed == 3                                    # all three keys matched
+
+
+def test_invalidate_checkpoint_no_filters_clears_all(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    removed = invalidate_checkpoint(rp, pp)
+    assert removed == 3
+    results_df, predictions = load_eval_checkpoint(rp, pp)
+    assert predictions == {} and results_df.empty
+
+
+def test_invalidate_checkpoint_unknown_field_raises(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    with pytest.raises(ValueError, match="unknown filter field"):
+        invalidate_checkpoint(rp, pp, mdoel="RF")         # typo'd field name
+
+
+def test_invalidate_then_recompute_only_touches_removed_keys(tmp_path):
+    rp, pp = _seed_checkpoint(tmp_path, _KEYS)
+    invalidate_checkpoint(rp, pp, model="RF")
+    compute_one, calls = _counting_compute()
+    run_checkpointed_eval(_KEYS, compute_one, rp, pp, verbose=False)
+    assert set(calls) == {("HLM", "fcfp4", "RF", "base"), ("MDR1", "hybrid", "RF", "base")}
+    _, predictions = load_eval_checkpoint(rp, pp)
+    assert len(predictions) == 3                           # back to full set

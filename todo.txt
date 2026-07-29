@@ -1,0 +1,12 @@
+
+
+
+
+1. Check ECFP4 vs FCFP4 performance
+2. Tanimoto FCFP4, ECFP4 Dice and Tanimoto similarity checks
+3. Plot max similarity as above
+4. Check Pearson r normally distributed
+5. Check main claims:
+    1. DNN > trad ML (RF) but less significant perf over SVM, Grad Boosted methods
+    2. Model retraining & molec reps larger role compared to algo choice, 1 month > 5 month > 10
+    3. Hybrid RDKit + FCFP4 / MPNN + RDKit > FCFP4 / RDKit alone

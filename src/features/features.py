@@ -25,6 +25,25 @@ def morgan_fingerprints(smiles_list, radius=2, n_bits=1024):
     return np.array(fps)
 
 
+def fcfp4_bit_vectors(smiles_list, radius=2, n_bits=1024, use_features=True):
+    """Return list of RDKit ExplicitBitVect Morgan fingerprints for pairwise similarity use.
+
+    Unlike morgan_fingerprints (numpy array, for ML features), this returns raw bit vectors
+    for use with DataStructs.BulkDiceSimilarity / BulkTanimotoSimilarity.
+    Despite the name (project default is FCFP4, use_features=True), passing use_features=False
+    gives ECFP4 instead — same RDKit call, only the invariant seeding differs. ECFP4 is
+    comparison-only (see DECISIONS.md); FCFP4 remains the fixed featurizer for modelling.
+    Raises ValueError for any invalid SMILES.
+    """
+    fps = []
+    for smi in smiles_list:
+        mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None
+        if mol is None:
+            raise ValueError(f"Invalid SMILES: {smi!r}")
+        fps.append(rdMolDescriptors.GetMorganFingerprintAsBitVect(mol, radius, nBits=n_bits, useFeatures=use_features))
+    return fps
+
+
 def rdkit_descriptors(smiles_list):
     """Return DataFrame of RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds).
 
