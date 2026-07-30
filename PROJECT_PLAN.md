@@ -72,7 +72,11 @@ New **Section 5.0 dummy-data harness** cell (`sec5_dummy_*`, toggle `USE_DUMMY_S
 - **5.3b** (Fig 5, representation effect) — added FCNN + BayesianRidge. MPNN excluded by design.
 - **5.4** (Fig 6, similarity-binned MAE) — added MPNN2 + BayesianRidge; `sim_fs_for()` resolves each model's featureset (MPNN2 → `graph_rdkit`); subplot grid now scales with model count.
 - **5.5** (ANOVA/Tukey) — added MPNN1 + MPNN2 (skipped BayesianRidge). `build_cv_long_df` now takes a per-model featureset map + a **fold-count guard**: it keeps only models on the shared 15-fold `RepeatedKFold(random_state=128)` grid and returns the kept list (`ANOVA_MODELS`), which downstream cells iterate. **MPNN joins 5.5 only after a `'full'` run** — 3 folds does *not* help (unpaired partitions; needs the identical 5×3/rs=128 grid); under `'sample'` MPNN is auto-dropped and the ANOVA still runs on the classical models. Verified full (6 models) + sample (MPNN dropped) paths headlessly.
-- ⏳ **5.6 (Fig 7) and 5.7 (Table 2) are empty markdown stubs** — new builds. Per user: Fig 7 needs RF/LightGBM/MPNN2; Table 2 needs RF/LightGBM/MPNN1/MPNN2. **Awaiting spec of what each depicts** before implementing.
+- ✅ **5.3** now also includes MPNN1/MPNN2 (done 2026-07-30) via a `BOXPLOT_MODEL_FS` resolver — each MPNN shown at its own `graph`/`graph_rdkit` featureset (no `hybrid` preds), suptitle annotated.
+- ✅ **5.7 — Table 2 recreation** (done 2026-07-30, cell `table2_57_code`) — top block = §2.1 summary stats (all 6 endpoints); bottom block = per-model Pearson r as `CV_r (test_r)`, rows `R (model)ᵇ` (base) / `R (model)ᶜ` (tuned), models RF/LightGBM/MPNN1/MPNN2. `TABLE2_CLASSICAL_FS='hybrid'` knob for RF/LightGBM featureset; MPNN reads `graph`/`graph_rdkit`. ᶜ rows blank until the `tuned` arm exists; hPPB/rPPB show stats only (unmodelled). Deviations documented: CV_r = mean RepeatedKFold(5×3) not single 5-fold. Verified against dummy `results_df`.
+- ✅ **5.6 — Figure 7 recreation** (done 2026-07-30, cell `fig7_56_code`) — 1×3 grouped bar charts (RF, LightGBM, MPNN2), x=endpoints (HLM/MDR1/SOL/RLM; PPB omitted), two bars each: **default** (`base` arm) vs **optimized** (`tuned` arm), y=test-set Pearson r. RF/LightGBM use `FIG7_CLASSICAL_FS='hybrid'`; MPNN2 uses `graph_rdkit`. **Error bars = bootstrap SD of the test-set Pearson r** (resample test compounds, `N_BOOT=1000`, set 0 to disable) — the paper's error source is unstated, this is a principled test-metric uncertainty. Optimized bars stay empty (`nan`) until the `tuned` arm is run, then fill automatically. Verified headlessly (Agg) against dummy data.
+
+**Section 5 is now fully wired for all 9 models across 5.1–5.7.** Remaining Section 5 dependency: the `tuned` arm (Section 4.4) to populate 5.6's optimized bars + Table 2's ᶜ rows, and a `'full'` MPNN run to admit MPNN into 5.5's ANOVA.
 
 ### 1. Add 4 new models to `get_paper_models()`
 
@@ -88,24 +92,38 @@ New **Section 5.0 dummy-data harness** cell (`sec5_dummy_*`, toggle `USE_DUMMY_S
 - [ ] Drop `rdkit_2d_features`/descriptastorus usage from Section 3 — MPNN2 no longer needs it now that it reuses the `'rdkit'` (rmoldes) featureset; leave the function in `src/features/features.py` unused rather than deleting
 - [ ] Re-run Section 4.2's `arm='base'` loop to cover all 9 models (currently only has the original 5)
 
-### 2. New Section 4.4 — separate hyperparameter tuning pass (after 4.2, before Section 5)
+### 2. Section 4.4 — separate hyperparameter tuning pass (design agreed 2026-07-30)
 
-Deliberately **not** inline with Section 4.2's loop — the eval loop already takes a while and the new tuners (`tune_fcnn_architecture`, `tune_mpnn_hyperopt`) are heavier than a quick `GridSearchCV` call.
+Deliberately **not** inline with Section 4.2's loop — the tuners are heterogeneous and heavy. **Two resumable layers**, both crash-safe:
+
+```
+4.4a  TUNE (expensive) → best-params cache:  for each (endpoint, featureset in TUNE_FEATURESETS, model)
+        classical → tune_paper_model (staged GridSearchCV, already exists)
+        FCNN      → tune_fcnn_architecture (new: CV-score the 5 FCNN_ARCHITECTURES, keep best)
+        MPNN1/2   → ChemProp's BUILT-IN hyperopt (new wrapper: TPE over its default 4D space)
+      → write best_params to data/processed/section4_tuned_params.json, keyed 'endpoint|featureset|model'
+        (skip keys already in the cache — resumable). Reuse src/tuning save_params/load_params.
+4.4b  EVAL (reuses 4.2/4.2b machinery):  build each model from its cached best_params →
+        model_validation → arm='tuned' → run_checkpointed_eval into the same section4_* files.
+```
+
+- **`TUNE_FEATURESETS` flag** — `['hybrid']` for day-to-day (covers Fig 7 / Table 2), all three `FEATURESETS` for the overnight run.
+- **MPNN Full/Sample flag** also governs tuning cost: `num_iters` for ChemProp hyperopt (full ≈ 20 matching `chemprop_hyperopt --num_iters 20`, sample ≈ 3 preview) and the CV grid of the follow-up `model_validation`.
 
 | Model(s) | Tuning method | Notes |
 |---|---|---|
-| RF, XGBoost, LightGBM, SVM, Lasso | existing `tune_paper_model` + `PARAM_GRID_STAGES` (`GridSearchCV(cv=5)`, plain `KFold`, not repeated) | paper's real method; RF/SVM/Lasso are single-stage joint grids (small hyperparameter spaces), XGBoost (5 stages)/LightGBM (4 stages) are sequential/greedy because a full joint grid would be combinatorially infeasible |
-| BayesianRidge | none | `'tuned'` row reuses the `'base'` `model_validation()` result verbatim (deterministic model, no re-fit needed) — flag with `note='no tuning applied'` |
-| FCNN | new `tune_fcnn_architecture()`: run `model_validation()` once per candidate in `FCNN_ARCHITECTURES` (5), keep whichever has the best **train-only** `Pearson_r_CV` | paper's own script has no CV or formal selection at all (just logs all 6 to a CSV) — picking via train-only CV avoids the test-set-leakage risk of eyeballing `r_test` |
-| MPNN1, MPNN2 | new `tune_mpnn_hyperopt()`: `hyperopt.fmin(tpe.suggest)`, joint search over chemprop's default 4D space (`hidden_size∈{300..2400 step 100}, depth∈{2..6}, dropout∈{0..0.4 step 0.05}, ffn_num_layers∈{1,2,3}`), `num_iters=20` | matches `chemprop_hyperopt --num_iters 20` exactly; `hyperopt` package already installed (transitive dep of chemprop, v0.2.7) |
+| RF, XGBoost, LightGBM, SVM, Lasso | existing `tune_paper_model` + `PARAM_GRID_STAGES` (`GridSearchCV(cv=5)`, plain `KFold`) | paper's real method; RF/SVM/Lasso single-stage joint grids, XGBoost (5)/LightGBM (4) sequential/greedy |
+| BayesianRidge | none | not in the 4.4 model set (deterministic); if a `'tuned'` row is ever wanted it reuses the `'base'` result verbatim |
+| FCNN | new `tune_fcnn_architecture()`: `model_validation()` per candidate in `FCNN_ARCHITECTURES` (5), keep best **train-only** `Pearson_r_CV` | picking via train-only CV avoids the test-leakage of eyeballing `r_test` (paper's own script does no formal selection) |
+| MPNN1, MPNN2 | new wrapper around **ChemProp's built-in hyperopt** (TPE over `{hidden_size, depth, dropout, ffn_num_layers}` — its default space = paper's S14), `num_iters` by Full/Sample | use ChemProp's own `hyperparameter_optimization`, not a hand-rolled `hyperopt.fmin`; `hyperopt` already installed (chemprop transitive dep) |
 
-- [ ] Neither `"FCNN"` nor `"MPNN"`/`"MPNN1"`/`"MPNN2"` get entries in `PARAM_GRID_STAGES` — that dict is `GridSearchCV`-specific
-- [ ] Append resulting `'tuned'` rows into `results_df`/`predictions` (merge with the `'base'` results already on disk) so Section 5.6 can read a single combined table, same as it already expects
+- [ ] Export `FCNN_ARCHITECTURES` from `src.hyperparams` (currently defined but unexported)
+- [ ] `"FCNN"`/`"MPNN*"` stay out of `PARAM_GRID_STAGES` (that dict is `GridSearchCV`-specific)
 
-### 3. Downstream (already scaffolded, blocked on the above)
+### 3. Downstream — Section 5 (DONE 2026-07-30, populates after 4.4)
 
-- [ ] Section 5.6 — base-vs-tuned ANOVA/Tukey comparison (same `group1/group2/meandiff/p-value` format as 5.5) — currently a TODO placeholder, unblocks once Section 4.4 produces combined base+tuned results
-- [ ] Section 5.7 — Table 2 Part 2 (CV Pearson r without parens, test Pearson r in parens, post-tuning) - what is "parens"?
+- ✅ Section 5.6 — **Figure 7** (default-vs-optimized test-r bar charts, cell `fig7_56_code`); optimized bars fill once the `tuned` arm exists.
+- ✅ Section 5.7 — **Table 2** (`CV_r (test_r)`, ᵇ base / ᶜ tuned, cell `table2_57_code`); ᶜ rows fill once the `tuned` arm exists.
 - [ ] Section 4.3 — Scaffold split (parked, unrelated to this work)
 
 ### Deferred — revisit only if needed

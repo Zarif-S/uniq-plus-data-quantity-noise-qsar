@@ -237,6 +237,47 @@ def test_run_checkpointed_eval_dedupes_stale_csv_row(tmp_path):
     assert results_df.iloc[0]["MAE"] == 1.0    # fresh value kept, not the stale 99.0
 
 
+def test_run_checkpointed_eval_continues_past_a_failing_key(tmp_path):
+    # An overnight batch must survive one raising key (e.g. an FCNN torch crash): the good keys are
+    # still computed and checkpointed, the run does not abort, and the failed key is left un-done.
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+    good1 = ("HLM", "fcfp4", "RF", "base")
+    bad = ("HLM", "fcfp4", "FCNN", "base")
+    good2 = ("HLM", "fcfp4", "SVM", "base")
+    base_compute, _ = _counting_compute()
+
+    def flaky(key):
+        if key == bad:
+            raise RuntimeError("boom")
+        return base_compute(key)
+
+    results_df, predictions = run_checkpointed_eval([good1, bad, good2], flaky, rp, pp, verbose=False)
+    assert good1 in predictions and good2 in predictions   # both good keys checkpointed
+    assert bad not in predictions                          # failed key not marked done
+    assert len(results_df) == 2
+
+    # Re-run: the two good keys are skipped; only the still-failing key is retried.
+    retried = []
+
+    def flaky2(key):
+        retried.append(key)
+        raise RuntimeError("boom again")
+
+    run_checkpointed_eval([good1, bad, good2], flaky2, rp, pp, verbose=False)
+    assert retried == [bad]                                # only the previously-failed key retried
+
+
+def test_run_checkpointed_eval_reraises_when_continue_on_error_false(tmp_path):
+    rp, pp = tmp_path / "res.csv", tmp_path / "pred.pkl"
+
+    def boom(key):
+        raise RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        run_checkpointed_eval([("HLM", "fcfp4", "RF", "base")], boom, rp, pp,
+                              verbose=False, continue_on_error=False)
+
+
 def test_load_eval_checkpoint_absent_returns_empty(tmp_path):
     results_df, predictions = load_eval_checkpoint(tmp_path / "nope.csv", tmp_path / "nope.pkl")
     assert results_df.empty and predictions == {}

@@ -86,3 +86,16 @@ def test_mpnn2_fit_predict_with_features_end_to_end():
         pred = m.predict(X)
     assert pred.shape == (len(_SMILES),)
     assert np.isfinite(pred).all()
+
+
+def test_tune_mpnn_hyperopt_returns_config():
+    from src.models import tune_mpnn_hyperopt
+    X, y = _xy(use_features=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        best = tune_mpnn_hyperopt(X, y, use_features=False, num_iters=2, epochs=1, random_state=0)
+    assert set(best) == {"hidden_size", "depth", "dropout", "ffn_num_layers"}
+    assert isinstance(best["hidden_size"], int) and isinstance(best["ffn_num_layers"], int)
+    assert isinstance(best["dropout"], float)
+    # a returned config must be directly usable to build the estimator
+    ChempropRegressor(**best, use_features=False)

@@ -388,6 +388,71 @@ Paper builds hybrid row-by-row via string lists and a CSV round-trip. We use `np
 
 ---
 
-**Last Updated**: 2026-07-22
+## ADR-008 — Single-Layer Parallelism for Paper-Recreation Tuning (`n_jobs`)
+
+**Date**: 2026-07-30
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+Tuning the paper-recreation regressors (`tune_paper_model` → `GridSearchCV`; `model_validation` → `cross_val_score`) oversubscribed the CPU. A single-`(endpoint, featureset)` RF tune ran >1 h at ~840% CPU on an 8-core machine — compute-bound, but far slower than the work warranted.
+
+Root cause: two nested parallelism layers both set to `n_jobs=-1`. The outer `GridSearchCV`/`cross_val_score` spawned ~8 worker processes, and each fit an estimator that itself used `n_jobs=-1` (RF/XGBoost via `n_jobs_model=-1`; **LightGBM via its all-cores default** when `n_jobs` is left unset). ~8×8 = ~64 threads contended for 8 cores → cache thrashing and context-switching: high CPU%, low useful throughput.
+
+---
+
+### Options Considered
+
+Both options collapse to a single parallelism layer and eliminate oversubscription:
+
+**Option A — outer owns the cores** (`n_jobs_cv=-1`, estimator `n_jobs=1`). Parallelise the CV/grid; each individual fit is serial.
+
+**Option B — estimator owns the cores** (`n_jobs_cv=1`, estimator `n_jobs=-1`). Serial CV/grid; each fit uses all cores internally.
+
+---
+
+### Decision
+
+**Option A — the outer CV/grid owns all cores; every estimator is single-threaded** (`n_jobs_model = 1`, applied to RF/XGBoost and now set explicitly on LightGBM, whose `None` default otherwise grabs all cores). Two secondary changes ship with it:
+
+- **`oob_score=False` on RF.** Tuning selects on CV R² and eval reports Pearson r; `.oob_score_` is read nowhere, so computing it only added a redundant out-of-bag prediction pass to every one of the ~400 fits per `(endpoint, featureset)`.
+- **The lone final refit in `model_validation` bumps `n_jobs=-1`** (guarded on the model exposing `n_jobs`). That fit runs after the CV, outside any parallel loop, so it cannot oversubscribe — it recovers full-core speed for the one place Option A would otherwise leave serial.
+
+---
+
+### Rationale — why Option A over Option B
+
+1. **Three of the six models cannot self-parallelise.** SVR (libsvm), Lasso, and BayesianRidge expose no `n_jobs` (verified). Under Option B their entire grids (SVM 48 combos, Lasso 9) would run one fit at a time on a single core, 7 idle. Option A parallelises the CV/grid uniformly for *every* model, the single-threaded ones included. This is the decisive reason.
+2. **Outer parallelism scales better even for the tree models.** `GridSearchCV` over `(combo, fold)` is embarrassingly parallel (independent full fits, near-linear speedup); estimator-internal `n_jobs` parallelises tree-building within one forest, with coordination overhead and sub-linear scaling. Small stages (e.g. XGBoost's 3-combo gamma stage) still get 5-fold outer parallelism.
+3. Option B's only advantage is lower peak RAM (one model resident vs ~8). Peak here is ~2–3 GB — a non-issue.
+
+`n_jobs` and `oob_score` never affect fitted values, only wall-clock and RAM — all three changes are **fidelity-neutral**.
+
+---
+
+### Grid kept full (fidelity)
+
+The remaining cost is the grid's genuine fit count (RF: 80 combos × 5-fold = 400 fits per `(endpoint, featureset)`; ~4,800 across the 4×3 sweep). Decision: **keep the paper's full 80-combo grid** rather than pruning the heavy combos (`n_estimators=1000`, unbounded `max_depth`/`max_features`). After the parallelism fix the sweep is correctly compute-bound — a multi-hour overnight job with zero wasted cycles — and faithfulness to Fang et al. (2023) outweighs the runtime saving. Notebook `01.5` keeps `n_jobs_cv = -1`; no notebook code change was needed, since the models come from `get_paper_models()`, which now carries the fix.
+
+---
+
+### FCNN CV parallelism — serial (`n_jobs=1`)
+
+The FCNN arm (`tune_fcnn_architecture` and the FCNN branch of `model_validation`) is a DeepChem/torch model, so CV-parallelizing it with `n_jobs=-1` both oversubscribes torch's own intra-op threads and risks deadlock / pickle failure under macOS `spawn` (the reason the MPNN branch already forces `n_jobs=1`). **Decision: FCNN uses `n_jobs=1` at all three notebook call sites** (§4.2 base, §4.3a tuning, §4.3b tuned); tree/linear models keep `n_jobs_cv=-1` so the outer CV still owns the cores. Torch parallelizes each individual fit internally, so serial folds are the right call, not a compromise.
+
+As a complementary hedge for unattended overnight runs, `run_checkpointed_eval` now wraps each key's compute in try/except-log-continue (`continue_on_error=True`, default): a single FCNN/torch crash mid-run no longer aborts the whole batch — the failed key is logged, skipped, and retried on the next run (it is never checkpointed). A checkpoint-write failure still propagates (fail-fast on disk problems), and `Ctrl-C` still stops the run.
+
+---
+
+### Location
+
+`src/hyperparams/hyperparams.py` (`n_jobs_model`, `param_base_RF`, `param_base_LGB`); `src/models/paper_models.py` (`model_validation` refit bump + corrected docstring; `run_checkpointed_eval` resilience guard); `tests/test_hyperparams.py` (guards estimators single-threaded + RF OOB off); `tests/test_models.py` (checkpoint resilience tests); `notebooks/01.5_adme_biogen_public_recreation.ipynb` (FCNN gated to `n_jobs=1` at the three §4.2/4.3 call sites).
+
+---
+
+**Last Updated**: 2026-07-30
 
 *Add new ADRs above this line, numbered sequentially.*

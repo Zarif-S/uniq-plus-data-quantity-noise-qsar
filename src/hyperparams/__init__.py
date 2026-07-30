@@ -10,6 +10,7 @@ from .hyperparams import (
     param_base_BayesianRidge,
     param_base_FCNN,
     param_base_MPNN,
+    FCNN_ARCHITECTURES,
     PARAM_GRID_STAGES,
 )
 
@@ -25,5 +26,6 @@ __all__ = [
     "param_base_BayesianRidge",
     "param_base_FCNN",
     "param_base_MPNN",
+    "FCNN_ARCHITECTURES",
     "PARAM_GRID_STAGES",
 ]

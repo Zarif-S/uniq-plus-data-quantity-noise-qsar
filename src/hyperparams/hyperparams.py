@@ -2,12 +2,18 @@
 # set up Hyperparameter search space, based off ADME_ML_public.py
 ############################################
 
-# n_jobs_cv (CV/GridSearchCV parallelism) is set per-notebook instead
-n_jobs_model = -1
+# Estimator-level parallelism. Keep this at 1: the outer GridSearchCV / cross_val_score owns all
+# cores (n_jobs_cv, set per-notebook to -1), and a parallel estimator nested inside a parallel outer
+# loop oversubscribes — ~8 fold/combo workers each spawning ~8 model threads = ~64 threads on 8
+# cores -> cache thrashing and high CPU% but low useful throughput. One parallelism layer only.
+# n_jobs never affects results, only wall-clock/RAM, so this is a fidelity-neutral speed knob.
+n_jobs_model = 1
 
 # set up Random Forest parameters
 
-param_base_RF ={'n_estimators': 500, 'oob_score':True,'n_jobs':n_jobs_model}
+# oob_score=False: tuning selects on CV R2 and eval reports Pearson r; .oob_score_ is never read
+# anywhere, so computing it only adds a redundant out-of-bag prediction pass to every forest fit.
+param_base_RF = {'n_estimators': 500, 'oob_score': False, 'n_jobs': n_jobs_model}
 param_search_RF = {'n_estimators': [100, 250, 500, 750, 1000],
                  'max_features':['sqrt',0.33,0.67, None],
                  'max_depth': [15, 25, 40, None]} # 5*4*4 =80
@@ -43,7 +49,9 @@ param_search_XGB = {'n_estimators':[100, 250, 500, 750, 1000],
 # never removed. We don't use it for tuning either; kept only for reference.
 
 # set up LightGBM parameters (5+20+100+16 =141)
-param_base_LGB = {'n_estimators': 500, 'subsample':0.8, 'colsample_bytree':0.8,'subsample_freq':1}
+# n_jobs=n_jobs_model (1): LightGBM's default (n_jobs=None) uses all cores, so without this it would
+# oversubscribe exactly like RF/XGB when nested inside GridSearchCV/cross_val_score (n_jobs_cv=-1).
+param_base_LGB = {'n_estimators': 500, 'subsample': 0.8, 'colsample_bytree': 0.8, 'subsample_freq': 1, 'n_jobs': n_jobs_model}
 param_search1_LGB = {'n_estimators':[100, 250, 500, 750, 1000]} # 5
 param_search2_LGB = {'num_leaves':[15, 31, 45, 60, 75],'min_child_samples':[10, 20, 30, 40]}  # 5* 4 = 20
 param_search3_LGB = {'subsample':[0.6, 0.7, 0.8, 0.9, 1.0], 'colsample_bytree':[0.6, 0.7, 0.8, 0.9, 1.0], 'subsample_freq': [0,1,3,5]} # 5*5*4 =100

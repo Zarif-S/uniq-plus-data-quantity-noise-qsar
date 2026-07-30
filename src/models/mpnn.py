@@ -133,3 +133,61 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
     def __del__(self):
         # best-effort cleanup of the fitted-model temp dir (bounded disk use across CV folds)
         shutil.rmtree(getattr(self, "save_dir_", ""), ignore_errors=True)
+
+
+def tune_mpnn_hyperopt(X, y, use_features=False, num_iters=20, epochs=30, random_state=42):
+    """Run ChemProp's built-in hyperopt (TPE) over its 'basic' search space and return the winning
+    config as a dict of ChempropRegressor kwargs {hidden_size, depth, dropout, ffn_num_layers}.
+
+    'basic' searches {depth, ffn_num_layers, dropout, linked_hidden_size} — matching the paper's
+    default ChemProp search (S14). X is encoded exactly like ChempropRegressor (col 0 = SMILES,
+    cols 1: = features when use_features). num_iters = number of trials (paper: 20; use fewer for a
+    Sample preview). Each trial trains for `epochs` with ChemProp's own internal train/val split.
+    """
+    import json
+
+    from chemprop.args import HyperoptArgs
+    from chemprop.hyperparameter_optimization import hyperopt
+
+    probe = ChempropRegressor(use_features=use_features)   # reuse identical X-decoding
+    smiles, feats = probe._split_X(X)
+    y = np.asarray(y, dtype=float)
+
+    work_dir = tempfile.mkdtemp(prefix="chemprop_hyperopt_")
+    try:
+        train_csv = os.path.join(work_dir, "train.csv")
+        ChempropRegressor._write_data_csv(train_csv, smiles, y)
+        config_path = os.path.join(work_dir, "best_config.json")
+
+        args = [
+            "--data_path", train_csv,
+            "--dataset_type", "regression",
+            "--epochs", str(epochs),
+            "--num_iters", str(num_iters),
+            "--search_parameter_keywords", "basic",
+            "--config_save_path", config_path,
+            "--hyperopt_checkpoint_dir", os.path.join(work_dir, "ckpt"),
+            "--save_dir", os.path.join(work_dir, "runs"),
+            "--num_folds", "1",
+            "--num_workers", "0",
+            "--seed", str(random_state),
+            "--pytorch_seed", str(random_state),
+            "--hyperopt_seed", str(random_state),
+            "--quiet",
+        ]
+        if use_features:
+            feats_path = os.path.join(work_dir, "train_feats.npz")
+            np.savez(feats_path, features=feats)
+            args += ["--features_path", feats_path, "--no_features_scaling"]
+
+        hyperopt(HyperoptArgs().parse_args(args))
+        with open(config_path) as f:
+            cfg = json.load(f)   # linked_hidden_size -> hidden_size == ffn_hidden_size
+        return {
+            "hidden_size": int(cfg["hidden_size"]),
+            "depth": int(cfg["depth"]),
+            "dropout": float(cfg["dropout"]),
+            "ffn_num_layers": int(cfg["ffn_num_layers"]),
+        }
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)

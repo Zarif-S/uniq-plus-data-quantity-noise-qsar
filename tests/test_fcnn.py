@@ -79,3 +79,18 @@ def test_fcnn_constructs_from_param_base_fcnn():
     assert m.hidden_layers == [512, 256, 64]
     assert m.beta1 == 0.9
     assert m.epochs == 50
+
+
+def test_tune_fcnn_architecture_selects_and_merges():
+    from src.models import tune_fcnn_architecture
+    X, y = _tiny_xy(n=60)
+    archs = {1: ([8], [0.0]), 2: ([16, 8], [0.1, 0.1])}   # two tiny candidates
+    base = {"epochs": 2, "batch_norm": False, "random_state": 0}
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        best_params, scores = tune_fcnn_architecture(X, y, archs, base, n_splits=2, n_repeats=1, n_jobs=1)
+    assert set(scores) == {1, 2}                            # every candidate scored
+    winner = max(scores, key=scores.get)
+    assert best_params["hidden_layers"] == archs[winner][0]  # winning arch's shape
+    assert best_params["dropout"] == archs[winner][1]
+    assert best_params["epochs"] == 2                        # base_params carried through

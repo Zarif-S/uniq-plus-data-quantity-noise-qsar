@@ -6,6 +6,7 @@ noise/learning-curve experiments) and must not be changed to accommodate noteboo
 """
 
 import os
+import traceback
 import warnings
 
 import joblib
@@ -42,7 +43,8 @@ def load_eval_checkpoint(results_path, predictions_path):
 
 
 def run_checkpointed_eval(keys, compute_one, results_path, predictions_path,
-                          key_cols=("endpoint", "featureset", "model", "arm"), verbose=True):
+                          key_cols=("endpoint", "featureset", "model", "arm"),
+                          verbose=True, continue_on_error=True):
     """Resumably evaluate `keys`, skipping any already present in the on-disk predictions checkpoint.
 
     keys:        iterable of hashable keys, e.g. (endpoint, featureset, model, arm).
@@ -53,16 +55,32 @@ def run_checkpointed_eval(keys, compute_one, results_path, predictions_path,
     newly computed key, results_df is rewritten to CSV *first* then predictions to pkl, so a crash
     between the two writes leaves a recomputable state (the CSV row is de-duplicated on `key_cols`,
     keep='last', on the next run). Returns (results_df, predictions).
+
+    continue_on_error (default True): if compute_one(key) raises, log the key + traceback and move
+    on instead of aborting — one bad key must not kill an unattended overnight batch. The failed key
+    is NOT checkpointed, so simply re-running retries it; a summary of failures is printed at the end.
+    Set False to let the first exception propagate (useful for interactive debugging). Only the
+    compute step is guarded — a checkpoint-write failure (e.g. disk full) still propagates, since
+    continuing past it would burn the night recomputing with nothing persisted. KeyboardInterrupt is
+    a BaseException, not Exception, so Ctrl-C still stops the run.
     """
     results_df, predictions = load_eval_checkpoint(results_path, predictions_path)
     rows = results_df.to_dict("records")
     done = set(predictions.keys())
+    failed = []
     for key in keys:
         if key in done:
             if verbose:
                 print(f"skip  {key}")
             continue
-        row, pred = compute_one(key)
+        try:
+            row, pred = compute_one(key)
+        except Exception:
+            if not continue_on_error:
+                raise
+            failed.append(key)
+            print(f"FAIL  {key}\n{traceback.format_exc()}")
+            continue
         rows.append(row)
         predictions[key] = pred
         df = pd.DataFrame(rows)
@@ -74,6 +92,10 @@ def run_checkpointed_eval(keys, compute_one, results_path, predictions_path,
         done.add(key)
         if verbose:
             print(f"done  {key}")
+    if failed:
+        print(f"\n{len(failed)} key(s) FAILED and were skipped (re-run to retry):")
+        for k in failed:
+            print(f"  - {k}")
     return pd.DataFrame(rows), predictions
 
 
@@ -150,6 +172,28 @@ def tune_paper_model(model, X_train, y_train, stages, n_jobs_cv=-1, cv=5):
     return model
 
 
+def tune_fcnn_architecture(X_train, y_train, architectures, base_params,
+                           n_splits=5, n_repeats=1, random_state=128, n_jobs=1):
+    """Select the FCNN architecture with the best TRAIN-ONLY mean CV Pearson r (no test peeking).
+
+    architectures: {id: (hidden_layers, dropout)} (e.g. FCNN_ARCHITECTURES). base_params: the fixed
+    FCNN kwargs held constant across candidates (lr, batch_norm, epochs, ...); its hidden_layers /
+    dropout are overridden per candidate. Selection uses the same RepeatedKFold + Pearson scorer as
+    model_validation(); default n_repeats=1 (a single 5-fold, cheap) — the winning arch then gets the
+    full RepeatedKFold(5,3) in the 4.4b eval pass. Returns (best_params, scores_by_arch_id).
+    """
+    rkf = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
+    scores = {}
+    for arch_id, (hidden, dropout) in architectures.items():
+        model = FCNN(**{**base_params, "hidden_layers": hidden, "dropout": dropout})
+        cv = cross_val_score(model, X_train, y_train, scoring=_pearson_scorer, cv=rkf, n_jobs=n_jobs)
+        scores[arch_id] = float(np.nanmean(cv))
+    best_id = max(scores, key=scores.get)
+    best_hidden, best_dropout = architectures[best_id]
+    best_params = {**base_params, "hidden_layers": best_hidden, "dropout": best_dropout}
+    return best_params, scores
+
+
 def model_validation(model, X_train, y_train, X_test, y_test,
                       n_splits=5, n_repeats=3, random_state=128, n_jobs=1):
     """Reproduce the paper's model_validation(): fit model once on the full X_train, compute
@@ -162,10 +206,14 @@ def model_validation(model, X_train, y_train, X_test, y_test,
     session (see src.metrics.mae), computed from this same y_pred_test capture.
 
     n_jobs controls parallelism across the 15 RepeatedKFold folds (not passed to the paper's
-    original script, which ran them serially) — safe to set to -1 even when the underlying
-    model itself also uses n_jobs=-1 internally (e.g. RF/XGBoost/LightGBM): joblib/loky give
-    each fold's fit its own process, so this is nested-but-not-conflicting parallelism, not
-    double-counting the same threads.
+    original script, which ran them serially). Set it to -1 so this outer CV owns all cores, but
+    the estimator passed in MUST stay single-threaded (n_jobs_model=1). Otherwise the two layers
+    oversubscribe: loky gives each of the ~8 concurrent fold fits its own process, and if the model
+    also uses n_jobs=-1 each of those processes spawns ~8 more threads (~8x8=64 on 8 cores) that
+    thrash the cache instead of speeding anything up. One parallelism layer only — the models built
+    by get_paper_models() already carry n_jobs=1, so leave them that way. (The single final refit
+    below is the one deliberate exception: it runs after the CV, outside any parallel loop, so it
+    bumps n_jobs=-1 for models that support it — a lone fit with no outer loop cannot oversubscribe.)
     """
     rkf = RepeatedKFold(n_splits=n_splits, n_repeats=n_repeats, random_state=random_state)
     cv_scores = cross_val_score(model, X_train, y_train, scoring=_pearson_scorer, cv=rkf, n_jobs=n_jobs)
@@ -175,6 +223,12 @@ def model_validation(model, X_train, y_train, X_test, y_test,
             f"{n_nan}/{len(cv_scores)} CV folds returned NaN Pearson r (constant predictions "
             "or targets in that fold) — averaging with nanmean, excluding them."
         )
+    # The CV above owns the cores (n_jobs); this final refit is a single fit outside any parallel
+    # loop, so it can safely use all cores with no nesting to oversubscribe. Estimators that expose
+    # n_jobs (RF/XGBoost/LightGBM) are built serial (n_jobs_model=1) to keep the CV clean — bump
+    # only this one fit. SVM/Lasso/BayesianRidge/FCNN/MPNN have no n_jobs and are left untouched.
+    if "n_jobs" in model.get_params():
+        model.set_params(n_jobs=-1)
     model.fit(X_train, y_train)
     y_pred_test = model.predict(X_test)
     r_test = pearson_r(y_test, y_pred_test)
