@@ -13,10 +13,23 @@ DeepChem/torch are imported lazily inside fit/predict — importing this class i
 trigger DeepChem's noisy optional-dependency warnings.
 """
 
+import multiprocessing
 import warnings
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
+
+# fit() runs once per CV fold; with n_jobs=-1 each fold fits in a separate loky worker, so a plain
+# warnings.warn fires ~16x per key (15 folds + 1 final fit) x every key. Emit only in the MAIN
+# process (parent_process() is None there, non-None in workers) and only once per message, so a
+# config-fidelity notice like batch_norm-ignored prints just once for the whole run.
+_WARNED_ONCE = set()
+
+
+def _warn_once(msg):
+    if multiprocessing.parent_process() is None and msg not in _WARNED_ONCE:
+        _WARNED_ONCE.add(msg)
+        warnings.warn(msg, stacklevel=3)
 
 
 class FCNN(BaseEstimator, RegressorMixin):
@@ -63,9 +76,9 @@ class FCNN(BaseEstimator, RegressorMixin):
         y = np.asarray(y, dtype=np.float32).reshape(-1, 1)
 
         if self.optimizer != "adam":
-            warnings.warn(f"FCNN: optimizer={self.optimizer!r} ignored; DeepChem's default (Adam) is used.")
+            _warn_once(f"FCNN: optimizer={self.optimizer!r} ignored; DeepChem's default (Adam) is used.")
         if self.batch_norm:
-            warnings.warn(
+            _warn_once(
                 "FCNN: batch_norm=True is ignored — DeepChem 2.8.0 MultitaskRegressor has no "
                 "batch-normalization support (plain Linear/dropout/activation stack)."
             )

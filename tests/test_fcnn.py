@@ -37,6 +37,10 @@ def test_fcnn_fit_predict_shape_and_finite():
 
 def test_fcnn_batch_norm_true_warns_and_false_does_not():
     X, y = _tiny_xy()
+    # The batch_norm/optimizer notices fire once per session (main process only), so an earlier
+    # test's fit may have already consumed it — clear the dedup set to assert the fire here.
+    from src.models import fcnn as _fcnn_mod
+    _fcnn_mod._WARNED_ONCE.clear()
     with warnings.catch_warnings(record=True) as w:
         warnings.simplefilter("always")
         FCNN(hidden_layers=(8,), dropout=(0.0,), epochs=2, batch_norm=True, random_state=0).fit(X, y)
