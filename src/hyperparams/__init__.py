@@ -9,6 +9,7 @@ from .hyperparams import (
     param_base_Lasso, param_search_Lasso,
     param_base_BayesianRidge,
     param_base_FCNN,
+    param_base_MPNN,
     PARAM_GRID_STAGES,
 )
 
@@ -23,5 +24,6 @@ __all__ = [
     "param_base_Lasso", "param_search_Lasso",
     "param_base_BayesianRidge",
     "param_base_FCNN",
+    "param_base_MPNN",
     "PARAM_GRID_STAGES",
 ]
