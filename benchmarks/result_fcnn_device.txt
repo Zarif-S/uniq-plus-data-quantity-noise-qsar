@@ -1,0 +1,6 @@
+X (2442, 316) float32 | epochs=50 | arch=[512, 256, 64]
+[cpu]     1.8s  device=cpu  pred mean=2.120 std=0.533
+[mps]     6.4s  device=mps  pred mean=2.234 std=0.527
+MPS speedup vs CPU: 0.28x
+pred agreement: cpu_mean=2.120 mps_mean=2.234
+RESULT_JSON {"cpu": {"seconds": 1.8, "device": "cpu", "pred_mean": 2.119591474533081, "pred_std": 0.5326301455497742}, "mps": {"seconds": 6.4, "device": "mps", "pred_mean": 2.2335476875305176, "pred_std": 0.5268927812576294}}

@@ -1,0 +1,4 @@
+[A] RF      1038.1s  peak   1324 MB  (8 combos x5)
+[A] SVM       35.4s  peak    703 MB  (48 combos x5)
+[A] Lasso      2.4s  peak    807 MB  (9 combos x5)
+RESULT_JSON {"label": "A", "n_jobs_model": 1, "n_jobs_cv": 3, "total_seconds": 1075.9, "overall_peak_ram_mb": 1324, "per_model": {"RF": {"seconds": 1038.1, "peak_ram_mb": 1324, "combos": 8, "fits": 40}, "SVM": {"seconds": 35.4, "peak_ram_mb": 703, "combos": 48, "fits": 240}, "Lasso": {"seconds": 2.4, "peak_ram_mb": 807, "combos": 9, "fits": 45}}}

@@ -1,0 +1,608 @@
+{
+  "HLM|fcfp4|RF": {
+    "max_features": 0.33,
+    "max_depth": null,
+    "n_estimators": 1000
+  },
+  "HLM|fcfp4|SVM": {
+    "epsilon": 0.1,
+    "gamma": "scale",
+    "C": 5
+  },
+  "HLM|fcfp4|XGBoost": {
+    "reg_lambda": 1.3,
+    "reg_alpha": 0.2,
+    "subsample": 0.8,
+    "max_depth": 4,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 2,
+    "gamma": 0.1,
+    "n_estimators": 100
+  },
+  "HLM|fcfp4|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 10,
+    "subsample_freq": 3,
+    "reg_alpha": 0,
+    "num_leaves": 75,
+    "subsample": 0.9,
+    "colsample_bytree": 0.6,
+    "n_estimators": 100
+  },
+  "HLM|fcfp4|Lasso": {
+    "alpha": 0.001
+  },
+  "HLM|fcfp4|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "HLM|rdkit|RF": {
+    "max_features": 0.67,
+    "max_depth": 15,
+    "n_estimators": 250
+  },
+  "HLM|rdkit|SVM": {
+    "epsilon": 0.1,
+    "gamma": "scale",
+    "C": 5
+  },
+  "HLM|rdkit|XGBoost": {
+    "reg_lambda": 1.3,
+    "reg_alpha": 0.4,
+    "subsample": 1.0,
+    "max_depth": 5,
+    "colsample_bytree": 0.6,
+    "min_child_weight": 1,
+    "gamma": 0,
+    "n_estimators": 1000
+  },
+  "HLM|rdkit|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 10,
+    "subsample_freq": 3,
+    "reg_alpha": 0,
+    "num_leaves": 31,
+    "subsample": 0.8,
+    "colsample_bytree": 0.9,
+    "n_estimators": 100
+  },
+  "HLM|rdkit|Lasso": {
+    "alpha": 0.005
+  },
+  "HLM|rdkit|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "HLM|hybrid|RF": {
+    "max_features": 0.67,
+    "max_depth": 25,
+    "n_estimators": 750
+  },
+  "HLM|hybrid|SVM": {
+    "epsilon": 0.1,
+    "gamma": "scale",
+    "C": 5
+  },
+  "HLM|hybrid|XGBoost": {
+    "reg_lambda": 1.2,
+    "reg_alpha": 0.2,
+    "subsample": 1.0,
+    "max_depth": 3,
+    "colsample_bytree": 0.9,
+    "min_child_weight": 1,
+    "gamma": 0.05,
+    "n_estimators": 250
+  },
+  "HLM|hybrid|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 10,
+    "subsample_freq": 3,
+    "reg_alpha": 0,
+    "num_leaves": 15,
+    "subsample": 0.9,
+    "colsample_bytree": 0.6,
+    "n_estimators": 750
+  },
+  "HLM|hybrid|Lasso": {
+    "alpha": 0.005
+  },
+  "HLM|hybrid|FCNN": {
+    "hidden_layers": [
+      512,
+      256,
+      64
+    ],
+    "dropout": [
+      0.25,
+      0.25,
+      0.1
+    ]
+  },
+  "MDR1|fcfp4|RF": {
+    "max_features": 0.33,
+    "max_depth": null,
+    "n_estimators": 1000
+  },
+  "MDR1|fcfp4|SVM": {
+    "epsilon": 0.01,
+    "gamma": "scale",
+    "C": 1
+  },
+  "MDR1|fcfp4|XGBoost": {
+    "reg_lambda": 1.1,
+    "reg_alpha": 0.2,
+    "subsample": 1.0,
+    "max_depth": 3,
+    "colsample_bytree": 0.7,
+    "min_child_weight": 3,
+    "gamma": 0,
+    "n_estimators": 100
+  },
+  "MDR1|fcfp4|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 20,
+    "subsample_freq": 1,
+    "reg_alpha": 0.5,
+    "num_leaves": 45,
+    "subsample": 0.6,
+    "colsample_bytree": 1.0,
+    "n_estimators": 100
+  },
+  "MDR1|fcfp4|Lasso": {
+    "alpha": 0.001
+  },
+  "MDR1|fcfp4|FCNN": {
+    "hidden_layers": [
+      2000,
+      1000
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "MDR1|rdkit|RF": {
+    "max_features": null,
+    "max_depth": null,
+    "n_estimators": 750
+  },
+  "MDR1|rdkit|SVM": {
+    "epsilon": 0.1,
+    "gamma": "auto",
+    "C": 1
+  },
+  "MDR1|rdkit|XGBoost": {
+    "reg_lambda": 1.2,
+    "reg_alpha": 0.4,
+    "subsample": 1.0,
+    "max_depth": 3,
+    "colsample_bytree": 0.9,
+    "min_child_weight": 2,
+    "gamma": 0.1,
+    "n_estimators": 1000
+  },
+  "MDR1|rdkit|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 30,
+    "subsample_freq": 1,
+    "reg_alpha": 0,
+    "num_leaves": 15,
+    "subsample": 0.8,
+    "colsample_bytree": 0.9,
+    "n_estimators": 250
+  },
+  "MDR1|rdkit|Lasso": {
+    "alpha": 0.001
+  },
+  "MDR1|rdkit|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "MDR1|hybrid|RF": {
+    "max_features": null,
+    "max_depth": 15,
+    "n_estimators": 250
+  },
+  "MDR1|hybrid|SVM": {
+    "epsilon": 0.1,
+    "gamma": "auto",
+    "C": 5
+  },
+  "MDR1|hybrid|XGBoost": {
+    "reg_lambda": 1,
+    "reg_alpha": 0,
+    "subsample": 1.0,
+    "max_depth": 3,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 1,
+    "gamma": 0.05,
+    "n_estimators": 1000
+  },
+  "MDR1|hybrid|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 10,
+    "subsample_freq": 3,
+    "reg_alpha": 0.5,
+    "num_leaves": 15,
+    "subsample": 0.9,
+    "colsample_bytree": 1.0,
+    "n_estimators": 100
+  },
+  "MDR1|hybrid|Lasso": {
+    "alpha": 0.005
+  },
+  "MDR1|hybrid|FCNN": {
+    "hidden_layers": [
+      200,
+      100,
+      50
+    ],
+    "dropout": [
+      0.25,
+      0.25,
+      0.1
+    ]
+  },
+  "SOL|fcfp4|RF": {
+    "max_features": "sqrt",
+    "max_depth": 40,
+    "n_estimators": 500
+  },
+  "SOL|fcfp4|SVM": {
+    "epsilon": 0.1,
+    "gamma": "scale",
+    "C": 5
+  },
+  "SOL|fcfp4|XGBoost": {
+    "reg_lambda": 1.3,
+    "reg_alpha": 0,
+    "subsample": 0.9,
+    "max_depth": 3,
+    "colsample_bytree": 0.6,
+    "min_child_weight": 3,
+    "gamma": 0,
+    "n_estimators": 100
+  },
+  "SOL|fcfp4|LightGBM": {
+    "reg_lambda": 0.5,
+    "min_child_samples": 20,
+    "subsample_freq": 0,
+    "reg_alpha": 0.5,
+    "num_leaves": 15,
+    "subsample": 0.6,
+    "colsample_bytree": 0.6,
+    "n_estimators": 100
+  },
+  "SOL|fcfp4|Lasso": {
+    "alpha": 0.005
+  },
+  "SOL|fcfp4|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "SOL|rdkit|RF": {
+    "max_features": null,
+    "max_depth": 25,
+    "n_estimators": 250
+  },
+  "SOL|rdkit|SVM": {
+    "epsilon": 0.3,
+    "gamma": "auto",
+    "C": 1
+  },
+  "SOL|rdkit|XGBoost": {
+    "reg_lambda": 1.4,
+    "reg_alpha": 0.4,
+    "subsample": 1.0,
+    "max_depth": 3,
+    "colsample_bytree": 0.9,
+    "min_child_weight": 1,
+    "gamma": 0,
+    "n_estimators": 100
+  },
+  "SOL|rdkit|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 20,
+    "subsample_freq": 1,
+    "reg_alpha": 0.2,
+    "num_leaves": 60,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "n_estimators": 100
+  },
+  "SOL|rdkit|Lasso": {
+    "alpha": 0.005
+  },
+  "SOL|rdkit|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "SOL|hybrid|RF": {
+    "max_features": null,
+    "max_depth": null,
+    "n_estimators": 250
+  },
+  "SOL|hybrid|SVM": {
+    "epsilon": 0.3,
+    "gamma": "auto",
+    "C": 10
+  },
+  "SOL|hybrid|XGBoost": {
+    "reg_lambda": 1.4,
+    "reg_alpha": 0,
+    "subsample": 0.9,
+    "max_depth": 3,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 1,
+    "gamma": 0,
+    "n_estimators": 250
+  },
+  "SOL|hybrid|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 20,
+    "subsample_freq": 3,
+    "reg_alpha": 0,
+    "num_leaves": 15,
+    "subsample": 0.9,
+    "colsample_bytree": 0.9,
+    "n_estimators": 100
+  },
+  "SOL|hybrid|Lasso": {
+    "alpha": 0.005
+  },
+  "SOL|hybrid|FCNN": {
+    "hidden_layers": [
+      200,
+      100,
+      50
+    ],
+    "dropout": [
+      0.25,
+      0.25,
+      0.1
+    ]
+  },
+  "RLM|fcfp4|RF": {
+    "max_features": 0.33,
+    "max_depth": null,
+    "n_estimators": 500
+  },
+  "RLM|fcfp4|SVM": {
+    "epsilon": 0.1,
+    "gamma": "scale",
+    "C": 10
+  },
+  "RLM|fcfp4|XGBoost": {
+    "reg_lambda": 1.4,
+    "reg_alpha": 0.2,
+    "subsample": 0.8,
+    "max_depth": 3,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 3,
+    "gamma": 0,
+    "n_estimators": 100
+  },
+  "RLM|fcfp4|LightGBM": {
+    "reg_lambda": 0,
+    "min_child_samples": 10,
+    "subsample_freq": 1,
+    "reg_alpha": 0,
+    "num_leaves": 45,
+    "subsample": 0.7,
+    "colsample_bytree": 0.7,
+    "n_estimators": 100
+  },
+  "RLM|fcfp4|Lasso": {
+    "alpha": 0.001
+  },
+  "RLM|fcfp4|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "RLM|hybrid|RF": {
+    "max_features": null,
+    "n_estimators": 500,
+    "max_depth": 25
+  },
+  "RLM|hybrid|SVM": {
+    "C": 10,
+    "epsilon": 0.3,
+    "gamma": "auto"
+  },
+  "RLM|hybrid|XGBoost": {
+    "colsample_bytree": 0.9,
+    "gamma": 0,
+    "min_child_weight": 3,
+    "subsample": 1.0,
+    "n_estimators": 250,
+    "reg_alpha": 0.4,
+    "max_depth": 3,
+    "reg_lambda": 1.2
+  },
+  "RLM|hybrid|LightGBM": {
+    "colsample_bytree": 0.8,
+    "num_leaves": 15,
+    "subsample_freq": 1,
+    "subsample": 0.9,
+    "n_estimators": 750,
+    "reg_alpha": 0,
+    "reg_lambda": 0,
+    "min_child_samples": 10
+  },
+  "RLM|hybrid|Lasso": {
+    "alpha": 0.001
+  },
+  "RLM|hybrid|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "HLM|graph|MPNN1": {
+    "hidden_size": 1400,
+    "depth": 4,
+    "dropout": 0.15000000000000002,
+    "ffn_num_layers": 2,
+    "_mode": "full"
+  },
+  "HLM|graph_rdkit|MPNN2": {
+    "hidden_size": 1800,
+    "depth": 3,
+    "dropout": 0.25,
+    "ffn_num_layers": 3,
+    "_mode": "full"
+  },
+  "MDR1|graph|MPNN1": {
+    "hidden_size": 700,
+    "depth": 4,
+    "dropout": 0.0,
+    "ffn_num_layers": 3,
+    "_mode": "full"
+  },
+  "MDR1|graph_rdkit|MPNN2": {
+    "hidden_size": 2200,
+    "depth": 3,
+    "dropout": 0.30000000000000004,
+    "ffn_num_layers": 1,
+    "_mode": "full"
+  },
+  "SOL|graph|MPNN1": {
+    "hidden_size": 800,
+    "depth": 6,
+    "dropout": 0.35000000000000003,
+    "ffn_num_layers": 1,
+    "_mode": "full"
+  },
+  "SOL|graph_rdkit|MPNN2": {
+    "hidden_size": 300,
+    "depth": 6,
+    "dropout": 0.4,
+    "ffn_num_layers": 1,
+    "_mode": "full"
+  },
+  "RLM|rdkit|RF": {
+    "n_estimators": 1000,
+    "max_depth": 25,
+    "max_features": null
+  },
+  "RLM|rdkit|SVM": {
+    "C": 1,
+    "gamma": "auto",
+    "epsilon": 0.1
+  },
+  "RLM|rdkit|XGBoost": {
+    "reg_lambda": 1,
+    "gamma": 0.1,
+    "max_depth": 3,
+    "min_child_weight": 3,
+    "colsample_bytree": 0.7,
+    "subsample": 0.9,
+    "n_estimators": 1000,
+    "reg_alpha": 0.4
+  },
+  "RLM|rdkit|LightGBM": {
+    "reg_lambda": 0,
+    "subsample_freq": 1,
+    "colsample_bytree": 1.0,
+    "subsample": 0.8,
+    "num_leaves": 15,
+    "n_estimators": 500,
+    "min_child_samples": 20,
+    "reg_alpha": 0
+  },
+  "RLM|rdkit|Lasso": {
+    "alpha": 0.001
+  },
+  "RLM|rdkit|FCNN": {
+    "hidden_layers": [
+      1000,
+      500
+    ],
+    "dropout": [
+      0.25,
+      0.1
+    ]
+  },
+  "HLM|graph_rdkit2dnorm|MPNN3": {
+    "hidden_size": 1400,
+    "depth": 4,
+    "dropout": 0.15000000000000002,
+    "ffn_num_layers": 2,
+    "_mode": "full"
+  },
+  "MDR1|graph_rdkit2dnorm|MPNN3": {
+    "hidden_size": 1700,
+    "depth": 5,
+    "dropout": 0.25,
+    "ffn_num_layers": 2,
+    "_mode": "full"
+  },
+  "SOL|graph_rdkit2dnorm|MPNN3": {
+    "hidden_size": 1100,
+    "depth": 6,
+    "dropout": 0.05,
+    "ffn_num_layers": 1,
+    "_mode": "full"
+  },
+  "RLM|graph|MPNN1": {
+    "hidden_size": 1400,
+    "depth": 4,
+    "dropout": 0.15000000000000002,
+    "ffn_num_layers": 2,
+    "_mode": "full"
+  },
+  "RLM|graph_rdkit|MPNN2": {
+    "hidden_size": 1700,
+    "depth": 3,
+    "dropout": 0.4,
+    "ffn_num_layers": 2,
+    "_mode": "full"
+  },
+  "RLM|graph_rdkit2dnorm|MPNN3": {
+    "hidden_size": 1800,
+    "depth": 2,
+    "dropout": 0.25,
+    "ffn_num_layers": 3,
+    "_mode": "full"
+  }
+}

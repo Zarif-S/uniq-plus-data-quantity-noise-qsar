@@ -2,12 +2,16 @@
 # set up Hyperparameter search space, based off ADME_ML_public.py
 ############################################
 
-# Estimator-level parallelism. Keep this at 1: the outer GridSearchCV / cross_val_score owns all
-# cores (n_jobs_cv, set per-notebook to -1), and a parallel estimator nested inside a parallel outer
-# loop oversubscribes — ~8 fold/combo workers each spawning ~8 model threads = ~64 threads on 8
-# cores -> cache thrashing and high CPU% but low useful throughput. One parallelism layer only.
-# n_jobs never affects results, only wall-clock/RAM, so this is a fidelity-neutral speed knob.
-n_jobs_model = 1
+# Estimator-level parallelism. -1 = the estimator owns all cores; the outer GridSearchCV /
+# cross_val_score runs ONE fit at a time (n_jobs_cv=1 per-notebook). One parallelism layer only —
+# never nest two parallel layers (that oversubscribes: ~64 threads on 8 cores). This layout (Option
+# B) is the chosen one; see ADR-008's 2026-08-02 update for the head-to-head benchmark: it is ~2.1x
+# FASTER than the inverse (outer=-1, estimator=1) on the tree-heavy grid, because forests parallelise
+# within a fit better than across folds. (It also uses LESS peak RAM — 610 vs 1324 MB measured — but
+# RAM was never the deciding factor: the ~98 GB scare was swap from a stale overlapping run + sleep,
+# not the layout.) Never affects results — a fidelity-neutral wall-clock knob. If a notebook ever
+# sets n_jobs_cv=-1, this MUST become 1 in the same change (the oversubscription trap).
+n_jobs_model = -1
 
 # set up Random Forest parameters
 

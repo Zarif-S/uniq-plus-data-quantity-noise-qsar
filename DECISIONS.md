@@ -453,6 +453,71 @@ As a complementary hedge for unattended overnight runs, `run_checkpointed_eval` 
 
 ---
 
-**Last Updated**: 2026-07-30
+### Update (2026-08-02) — Measured head-to-head; Option B stands (on wall-clock, not RAM)
+
+After this ADR chose Option A, a RAM scare prompted reverting the code to **Option B** (`n_jobs_model=-1`, notebook `n_jobs_cv=1`) without updating this ADR. This session benchmarked both layouts head-to-head on the worst-case unit (`RLM | rdkit`, real `tune_paper_model` path) and **confirms Option B as correct for this project's tree-heavy grid** — though for a different reason than the revert assumed.
+
+| Model | B (`n_jobs_model=-1`, cv=1) | A (`n_jobs_model=1`, cv=3) |
+|-------|-----------------------------|----------------------------|
+| RF (8 combos ×5) | **409 s** / 610 MB | 1038 s / 1324 MB |
+| SVM (48 ×5) | 87 s / 461 MB | **35 s** / 703 MB |
+| Lasso (9 ×5) | 8 s / 459 MB | **2.4 s** / 807 MB |
+| **Total** | **504 s / 610 MB** | 1076 s / 1324 MB |
+
+1. **B wins overall 2.1×.** RF dominates the grid, and forests parallelise *within* a fit far better than *across* folds — B's multi-core forests beat A's single-core ones ~2.5× on the heavy corner (`n_estimators=1000`, `max_features=None`). XGBoost/LightGBM self-parallelise identically. The paper grid is tree-heavy, so B is right. This makes **rationale point 2 above ("outer parallelism scales better even for the tree models") empirically false for the heavy RF corner.**
+2. **A wins SVM/Lasso** (2.4× / 3.3×) exactly as this ADR predicted — they have no `n_jobs` — but they are cheap absolutely, so the ~60 s they save cannot offset RF's ~630 s loss.
+3. **The RAM scare was a misdiagnosis.** Peak RSS across the whole loky process tree was 610 MB (B) / 1324 MB (A) — both trivial on the 17.2 GB Air. The ~98 GB seen earlier was *virtual/swap* from a stale overlapping `nbconvert` run + idle kernels + battery sleep (see LESSONS_LEARNED), **not** the parallelism layout. No layout here can produce 98 GB. Point 3 above ("peak here is ~2–3 GB — a non-issue") was the *correct* call; the revert to B was over-cautious about RAM but happens to be right on wall-clock.
+
+**Net: Option B (current code) stands, validated on wall-clock.** Revisit only if a future workload becomes SVM/Lasso/BayesianRidge-heavy. Harness + raw logs: `benchmarks/bench_parallelism.py`, `benchmarks/result_parallelism_{A,B}.txt`.
+
+---
+
+**Last Updated**: 2026-08-02
+
+---
+
+## ADR-009 — ChemProp 1.6.1 Has No MPS (GPU) Path; Pin Its Implicit Training Defaults
+
+**Date**: 2026-08-02
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+"Training the DNNs on a MacBook Air (M4, no discrete GPU) is slow" prompted checking whether the M4's integrated GPU (via PyTorch's MPS backend) could accelerate the MPNN (ChemProp) or FCNN (DeepChem).
+
+---
+
+### Findings
+
+1. **ChemProp 1.6.1 cannot use the M4 GPU at all.** Its `TrainArgs.device` property returns `torch.device('cpu')` unless `cuda`, else `torch.device('cuda', gpu)` — there is **no MPS branch** (verified by reading the installed source). So the MPNN runs on CPU here regardless of `torch.backends.mps.is_available()` being True. Reaching MPS would require patching device selection or upgrading — and 1.6.x → 2.x is a full API rewrite that breaks this project's CLI-args wrapper, while torch 2.0.1's MPS coverage of the scatter/gather ops message-passing needs is incomplete.
+2. **FCNN can reach MPS, but it is slower.** DeepChem's `MultitaskRegressor` forwards `device` to `TorchModel`; measured on `RLM | rdkit`, 50 epochs: **CPU 1.8 s vs MPS 6.4 s (MPS 3.6× slower)**. The net is too small — a full fit is under 2 s on CPU — so GPU launch/transfer overhead dwarfs the compute. Predictions agree across devices.
+
+**Conclusion: no DNN in this project benefits from the M4 GPU.** The perceived slowness was process hygiene + battery sleep (see ADR-008 update / LESSONS_LEARNED) and, for the tree models, the `n_jobs` layout — not the missing GPU.
+
+---
+
+### Decision
+
+- **Do not pursue MPS/GPU for the DNNs.** This holds *independently* of any speedup tactic: MPS is blocked for the MPNN by ChemProp 1.6.1's missing device path, and measured 3.6× *slower* for the FCNN because that net is tiny — neither fact depends on trial count or early stopping. The project is (deliberately, for now) **keeping full hyperopt trials and no MPNN early stopping**, so MPNN training is genuinely expensive; the realistic escalation if its wall-clock becomes a blocker is **cloud CUDA (Colab/Kaggle)**, not local MPS. (A future ChemProp≥2 + torch≥2.1 upgrade *might* let the larger MPNN graph compute benefit from MPS — untested, and gated behind the risky upgrade we are avoiding.)
+- **Pin ChemProp's implicit training-schedule defaults explicitly** in `src/models/mpnn.py` (`_PINNED_CHEMPROP_DEFAULTS` + an explicit `--ffn_hidden_size`), wired into **both** `fit()` and `tune_mpnn_hyperopt()` so trials and final training share one schedule. Pinned values — `batch_size=50`, `init_lr/max_lr/final_lr = 1e-4/1e-3/1e-4`, `warmup_epochs=2.0`, `activation=ReLU`, `aggregation=mean`, `aggregation_norm=100`, `ffn_hidden_size=hidden_size` — were each **verified equal to 1.6.1's defaults on 2026-08-02**, so this is **fidelity-neutral today**. Its sole purpose is insurance: a future ChemProp/dependency change can no longer silently alter MPNN behaviour. (`bias`, default False, is a `store_true` flag with no CLI way to force it False, so it remains implicit.) The tuned architecture set — `hidden_size/depth/dropout/ffn_num_layers`, the "S14" config — was already pinned.
+
+---
+
+### Rationale
+
+The four architecture hyperparameters were pinned (they define MPNN S14) but the entire training schedule rode on ChemProp's implicit defaults — a silent reproducibility hole. Pinning them now, while they still equal the defaults, costs nothing and removes the exact risk that made a version upgrade unsafe. Combined with the MPS finding, this settles both "can the GPU help" (no) and "is upgrading ChemProp safe" (only after these are pinned, which they now are).
+
+---
+
+### Location
+
+`src/models/mpnn.py` (`_PINNED_CHEMPROP_DEFAULTS`, fit + hyperopt wiring, explicit `--ffn_hidden_size`); benchmark harnesses + raw logs in `benchmarks/` (`bench_parallelism.py`, `bench_fcnn_device.py`, `result_*.txt`).
+
+---
+
+**Last Updated**: 2026-08-02
 
 *Add new ADRs above this line, numbered sequentially.*

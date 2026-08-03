@@ -9,14 +9,19 @@ from src.hyperparams import (
 )
 
 
-def test_estimators_single_threaded_to_avoid_oversubscription():
-    # Estimators must stay serial so the outer GridSearchCV/cross_val_score (n_jobs_cv=-1) owns the
-    # cores. A parallel estimator nested in a parallel CV loop oversubscribes (~64 threads on 8
-    # cores). LightGBM defaults to all cores, so it must set n_jobs explicitly too.
-    assert n_jobs_model == 1
-    assert param_base_RF["n_jobs"] == 1
-    assert param_base_XGB["n_jobs"] == 1
-    assert param_base_LGB["n_jobs"] == 1
+def test_single_parallelism_layer_to_avoid_oversubscription():
+    # Option B (ADR-008 update, 2026-08-02): the ESTIMATOR owns all cores (n_jobs_model=-1) and the
+    # outer GridSearchCV/cross_val_score runs one fit at a time (notebook n_jobs_cv=1). This is a
+    # single parallelism layer — the invariant that matters is that the two layers are never both
+    # parallel (that nesting oversubscribes, ~64 threads on 8 cores). The 2026-08-02 benchmark showed
+    # this layout is 2.1x faster than the inverse (outer=-1, estimator=1) on the tree-heavy grid,
+    # because forests parallelise within a fit better than across folds. LightGBM defaults to all
+    # cores anyway, so -1 here is explicit-and-consistent. If a notebook ever sets n_jobs_cv=-1, these
+    # MUST flip to 1 in the same change — that pairing is the oversubscription trap.
+    assert n_jobs_model == -1
+    assert param_base_RF["n_jobs"] == -1
+    assert param_base_XGB["n_jobs"] == -1
+    assert param_base_LGB["n_jobs"] == -1
 
 
 def test_rf_oob_score_disabled():

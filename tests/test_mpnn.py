@@ -88,6 +88,26 @@ def test_mpnn2_fit_predict_with_features_end_to_end():
     assert np.isfinite(pred).all()
 
 
+def test_mpnn3_fit_predict_with_features_generator_end_to_end():
+    # MPNN3: SMILES-only X, ChemProp generates rdkit_2d_normalized descriptors internally.
+    X, y = _xy(use_features=False)
+    m = ChempropRegressor(features_generator="rdkit_2d_normalized", epochs=2, random_state=0)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        m.fit(X, y)
+        pred = m.predict(X)
+    assert pred.shape == (len(_SMILES),)
+    assert np.isfinite(pred).all()
+
+
+def test_mpnn3_feature_modes_mutually_exclusive():
+    import pytest
+    X, y = _xy(use_features=True)
+    m = ChempropRegressor(use_features=True, features_generator="rdkit_2d_normalized")
+    with pytest.raises(ValueError, match="mutually exclusive"):
+        m.fit(X, y)
+
+
 def test_tune_mpnn_hyperopt_returns_config():
     from src.models import tune_mpnn_hyperopt
     X, y = _xy(use_features=False)
