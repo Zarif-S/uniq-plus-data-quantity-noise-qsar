@@ -365,6 +365,16 @@ Notebook `01.5_adme_biogen_public_recreation.ipynb` reproduces Fang et al. (2023
 **Fingerprint radius — follow code over paper text**
 Paper text states "radius 4 (FCFP4)" — a contradiction (FCFP4 means diameter=4, i.e. radius=2). Source code (`ADME_ML_public.py` line 187) uses `radius=2, nBits=1024, useFeatures=True`. We follow the code: radius=2, FCFP4. FCFP4 remains the fixed featurizer for modelling — do not swap it for ECFP4 there. (Update 2026-07-29: ECFP4 is now used in section 2.2's similarity-distribution plot, purely as a comparison series against FCFP4 — not for any ML features. Same `fcfp4_bit_vectors()` call with `use_features=False`; ECFP4/FCFP4 differ only in that one RDKit flag, no separate function.)
 
+**ECFP4 promoted from comparison-only to a modelling representation (2026-08-03)**
+Supersedes the "not for any ML features" clause in the fingerprint-radius decision above. ECFP4 is
+now also a modelling featureset, used in §5.3b (Paper's Fig 5) to study the effect of molecular
+representation on model performance. Two new featuresets are added alongside `fcfp4`/`rdkit`/`hybrid`:
+`ecfp4` (1024 ECFP4 bits) and `hybrid_ecfp4` (ECFP4 + rdMolDes, 1340). Numpy ECFP4 matrices come from
+`morgan_fingerprints(smiles, use_features=False)` (new `use_features` param; default `True` = FCFP4,
+unchanged). FCFP4 remains the **primary** featurizer — the paper's `hybrid` stays fcfp4+rdkit. The new
+featuresets run the **base arm only** for now (tuning can be added later). This reverses the earlier
+comparison-only scope deliberately, to broaden the representation comparison.
+
 **Similarity metric — Sørensen-Dice, not Tanimoto**
 Paper methods state Sørensen-Dice explicitly. Using Tanimoto gave mean=0.167 ± 0.059; switching to Dice gave 0.282 ± 0.083, matching the paper's reported 0.28 ± 0.08 exactly. Use `DataStructs.BulkDiceSimilarity` throughout.
 

@@ -23,7 +23,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 
 | Action | Signature | Description |
 |--------|-----------|-------------|
-| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024) → np.ndarray` | Returns (N, n_bits) int array of FCFP4 fingerprints (always useFeatures=True) |
+| `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → np.ndarray` | Returns (N, n_bits) int array of Morgan fingerprints. `use_features=True` (default) → FCFP4; `use_features=False` → ECFP4 (modelling representation for §5.3b, see DECISIONS.md) |
 | `fcfp4_bit_vectors` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → list[ExplicitBitVect]` | Returns raw RDKit bit vectors for use with `DataStructs.BulkDiceSimilarity`/`BulkTanimotoSimilarity` — not a numpy array like `morgan_fingerprints`. Despite the name, `use_features=False` gives ECFP4 (comparison-only, see DECISIONS.md) — same RDKit call, only the invariant seeding differs |
 | `rdkit_descriptors` | `(smiles_list) → pd.DataFrame` | Returns DataFrame of 6 RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds) |
 
@@ -36,7 +36,8 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 - `rdkit_descriptors` always returns exactly 6 columns in order: MW, LogP, TPSA, HBD, HBA, RotBonds
 - Morgan FP defaults (radius=2, n_bits=1024, useFeatures=True fixed) are fixed project constants matching Fang et al. (2023) FCFP4 setup — do not change without a documented reason
 - `fcfp4_bit_vectors` uses the same fixed FCFP4 params as `morgan_fingerprints`, just a different output type; call sites should still pass `radius`/`n_bits`/`use_features` explicitly rather than relying on the defaults, so the exact spec in use is visible at the call site
-- `fcfp4_bit_vectors(..., use_features=False)` gives ECFP4 instead — used only for similarity-distribution comparison plots (FCFP4 vs ECFP4, Dice vs Tanimoto), never as a substitute for `morgan_fingerprints` in any ML feature pipeline. FCFP4 (`use_features=True`) remains the fixed featurizer for modelling (see DECISIONS.md); name the resulting variable `ecfp4_fps`/`fcfp4_fps` at the call site to keep intent clear since the function name itself doesn't change
+- `fcfp4_bit_vectors(..., use_features=False)` gives ECFP4 bit-vectors — used for the similarity-distribution comparison plots (FCFP4 vs ECFP4, Dice vs Tanimoto). Name the resulting variable `ecfp4_fps`/`fcfp4_fps` at the call site to keep intent clear since the function name itself doesn't change
+- **ECFP4 as a modelling representation** (updated — see DECISIONS.md): ECFP4 was originally comparison-only, but is now also a modelling featureset for the §5.3b representation study. Use `morgan_fingerprints(smiles, use_features=False)` for the numpy ECFP4 matrix; FCFP4 (`use_features=True`, the default) remains the *primary* featurizer, and the ecfp4/hybrid_ecfp4 featuresets run the base arm alongside fcfp4/rdkit/hybrid
 - Neither `morgan_fingerprints` nor `rdkit_descriptors` standardizes input mols — both parse SMILES directly via `Chem.MolFromSmiles`. Caller must pass already-standardized SMILES (via `src.preprocessing.standardize`) upstream if standardization matters; there is no internal safeguard against unstandardized input
 
 ---

@@ -33,6 +33,14 @@ def test_morgan_fp_invalid_smiles_raises_value_error():
         morgan_fingerprints(["not_valid"])
 
 
+def test_morgan_fp_use_features_false_gives_ecfp4_and_differs():
+    # use_features=False -> ECFP4 numpy matrix; must differ from the FCFP4 default for aspirin
+    fcfp4 = morgan_fingerprints([ASPIRIN], use_features=True)
+    ecfp4 = morgan_fingerprints([ASPIRIN], use_features=False)
+    assert ecfp4.shape == (1, 1024)
+    assert not np.array_equal(fcfp4, ecfp4)
+
+
 def test_rdkit_descriptors_invalid_smiles_raises_value_error():
     with pytest.raises(ValueError, match="Invalid SMILES"):
         rdkit_descriptors(["not_valid"])

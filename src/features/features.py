@@ -6,10 +6,13 @@ from rdkit import Chem
 from rdkit.Chem import Descriptors, rdMolDescriptors, AllChem
 
 
-def morgan_fingerprints(smiles_list, radius=2, n_bits=1024):
-    """Return (N, n_bits) numpy array of FCFP4 fingerprints for a list of SMILES.
+def morgan_fingerprints(smiles_list, radius=2, n_bits=1024, use_features=True):
+    """Return (N, n_bits) numpy array of Morgan fingerprints for a list of SMILES.
 
-    Uses AllChem.GetMorganFingerprintAsBitVect with useFeatures=True — matches paper code exactly.
+    use_features=True (default) gives FCFP4 — matches paper code exactly and remains the fixed
+    featurizer for the primary modelling pipeline. use_features=False gives ECFP4, added as an
+    extra modelling representation for the §5.3b representation-comparison study (see DECISIONS.md:
+    ECFP4 promoted from comparison-only to a modelling representation).
     Defaults (radius=2, n_bits=1024) match Fang et al. (2023) FCFP4 setup.
     Raises ValueError for any invalid SMILES — pre-validate with smiles_validity_report.
 
@@ -21,7 +24,7 @@ def morgan_fingerprints(smiles_list, radius=2, n_bits=1024):
         mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None
         if mol is None:
             raise ValueError(f"Invalid SMILES: {smi!r}")
-        fps.append(np.array(AllChem.GetMorganFingerprintAsBitVect(mol, radius, useFeatures=True, nBits=n_bits)))
+        fps.append(np.array(AllChem.GetMorganFingerprintAsBitVect(mol, radius, useFeatures=use_features, nBits=n_bits)))
     return np.array(fps)
 
 

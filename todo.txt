@@ -10,3 +10,17 @@
     1. DNN > trad ML (RF) but less significant perf over SVM, Grad Boosted methods
     2. Model retraining & molec reps larger role compared to algo choice, 1 month > 5 month > 10
     3. Hybrid RDKit + FCFP4 / MPNN + RDKit > FCFP4 / RDKit alone
+
+
+----
+The overflow encountered in _ncf_cdf warning
+
+Where it comes from: the X_rdkit_norm = rdkit_2d_features(smiles) line in the section 3 cell (h8i9j0k1) — specifically descriptastorus's RDKit2DNormalized generator (src/features/features.py:147). Not the fingerprints, not rdmoldes.
+
+Why it happens: rdkit_2d_normalized doesn't just compute the 200 descriptors — it normalizes each one to [0,1] by applying a fitted CDF. descriptastorus ships a table of per-descriptor distributions fit to a large reference set of molecules. Several descriptors were fit to a non-central F distribution (scipy.stats.ncf), whose CDF is _ncf_cdf. When one of your molecules has a descriptor value far outside the range the reference distribution was fit on, evaluating that CDF pushes an internal special-function term past the float range → RuntimeWarning: overflow encountered in _ncf_cdf.
+
+Is it a problem? No — it's benign. On overflow the CDF just saturates to ~0 or ~1, which is exactly the correct behavior for an extreme value (fully in one tail). The affected descriptor for that molecule ends up pinned at 0.0 or 1.0. Nothing is NaN, no molecule is dropped, and the value is what you'd want anyway.
+
+Two things worth noting for fidelity:
+- This is descriptastorus doing its normal thing, so it also fires inside ChemProp when MPNN3 generates rdkit_2d_normalized itself — same source, same harmlessness.
+- If you want a clean output, wrap the call in np.errstate(over='ignore') or a warnings.catch_warnings filter on RuntimeWarning. I'd leave a one-line comment rather than suppress silently, so the saturation behavior stays visible.
