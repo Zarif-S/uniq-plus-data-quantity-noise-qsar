@@ -148,6 +148,7 @@ This is a 6-week academic research project. Conventions are minimal but non-nego
 - **Notebooks runnable top-to-bottom**: always verify with Kernel → Restart & Run All before treating results as final
 - **Extract to `src/` when**: a function is called in more than one notebook, or is longer than ~20 lines
 - **`src/` functions get a one-line docstring** and a corresponding sanity test in `tests/`
+- **Notebook code favours readability over compactness**: one statement per line (no semicolon-chaining), named intermediate variables over deeply-nested one-liners, and stats/labels computed on their own lines before plotting. A person reads this code once and should get it immediately. (Exception: a single clear vectorised expression that beats an explicit loop — readable ≠ always more lines.)
 - **Run `ruff check src/ tests/`** occasionally (not on every save) to catch obvious issues
 
 ### What we skip
