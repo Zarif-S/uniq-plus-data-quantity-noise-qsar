@@ -2,11 +2,14 @@
 
 One class, two configurations via `use_features`:
   MPNN1 (use_features=False): graph only.
-  MPNN2 (use_features=True):  graph + external precomputed features — our scaled rmoldes (316),
+  MPNN2 (use_features=True):  graph + external precomputed features — our rmoldes (316),
                               passed via --features_path with --no_features_scaling (they are
-                              already RobustScaler'd upstream). This reuses the 'rdkit' featureset
-                              and deviates from the paper's rdkit_2d_normalized generator
-                              (2026-07-29 decision).
+                              already scaled upstream). This reuses the 'rdkit' featureset and
+                              deviates from the paper's rdkit_2d_normalized generator (2026-07-29
+                              decision). Upstream scaling is QuantileTransformer(uniform) — the
+                              closest analogue to MPNN3's CDF; previously RobustScaler, which was a
+                              linear ML-preprocessing mismatch to the MPNN's CDF feature philosophy
+                              (2026-08-03 decision; see DECISIONS.md).
 
 Validation: the paper's MPNN_public.py did a single split / no CV. We instead run this wrapper
 through the project's model_validation() so MPNN gets a CV distribution like the other models —
@@ -56,8 +59,8 @@ class ChempropRegressor(BaseEstimator, RegressorMixin):
     Three feature configurations (mutually exclusive):
       MPNN1: use_features=False, features_generator=None — graph only. X is (n, 1) SMILES.
       MPNN2: use_features=True,  features_generator=None — graph + EXTERNAL precomputed features
-             (our RobustScaler'd rmoldes, 316) passed via --features_path with --no_features_scaling.
-             X is (n, 1+F): col 0 SMILES, cols 1: float features.
+             (our rmoldes, 316, QuantileTransformer-uniform upstream) passed via --features_path
+             with --no_features_scaling. X is (n, 1+F): col 0 SMILES, cols 1: float features.
       MPNN3: use_features=False, features_generator='rdkit_2d_normalized' — graph + ChemProp's OWN
              generated rdkit_2d_normalized descriptors (200, CDF-normalized by descriptastorus).
              X is (n, 1) SMILES only — ChemProp computes the descriptors from SMILES. Uses

@@ -64,7 +64,8 @@ for §2.1 stats, §2.2 similarity plots, §5.7 Table 2.
 Depends on final featureset count + ARMS decision.
 - [ ] **#7** Rewrite 4.0 runtime note (the 4×3×5×2=120 math changes with ecfp4)
 - [ ] **#11** Update 4.2 header (FCNN now included) + explain `clone(...)` (answered in Batch F)
-- [ ] **#13** Add MPNN3 rationale note in 4.3; verify RobustScaler applied to mpnn2 vs mpnn3
+- [ ] **#13a** Add MPNN3 rationale note in 4.3 (why mpnn3 = faithful recreation of paper's MPNN2)
+- [x] **#13b** RobustScaler question RESOLVED via Batch I (MPNN2 → QuantileTransformer). See below.
 - [ ] **#9** Consolidate `n_jobs` to ONE place (notebook, not `hyperparams.py`) + update
       `DECISIONS.md` (ADR-008) and `MEMORY.md`
 - [ ] **#10** Tidy `ARMS = ('base',)` — the 'tuned' branch is dead in 4.2 (produced by 4.3b)
@@ -96,4 +97,24 @@ Depends on final featureset count + ARMS decision.
 ## Batch H —
 - Add number of fits to model training, eval, tuning sections so its clear why it might take long to run from fresh
 - I put 3 ';' after update layout and commented out fig.show() in 01_5 notebook, must be a better way to hide/show plots? maybe a flag for them to be shown/hidden? Might help if we saved the plots to the machine, that way they can always be hidden and I can change the flags as and when its needed? I noticed none of the plotly plots are saved? I noticed that when the plots are showing, it makes it hard to save my notebook.
+
+## Batch I — MPNN2 normalization fix (handoff from another session) — ✅ DONE (code); USER re-runs
+Switch MPNN2's rmoldes scaling RobustScaler → QuantileTransformer(uniform) so it stops confounding
+the 316-vs-200 feature comparison with a normalization difference (MPNN3's CDF). Full rationale in
+DECISIONS.md (2026-08-03 entry).
+- [x] `01.5` §4.1 splits: added `X_train_qt`/`X_test_qt` (rdkit fs only, fit on raw X_train,
+      `QuantileTransformer(output_distribution='uniform', n_quantiles=min(1000,n), subsample=10000, seed=42)`).
+- [x] `01.5` §0 import: `QuantileTransformer`.
+- [x] MPNN2 repointed to QT in §4.2b, §4.3a, §4.3b (MPNN1/MPNN3 untouched; shared RobustScaler untouched).
+- [x] `mpnn.py` docstring updated.
+- [x] DECISIONS.md ADR (intent / confound / fix / residual limitation / kept old run / deferred MPNN4).
+- [x] §4.2b markdown note (residual limitation) + one-time migration cell (`MPNN2` → `MPNN2_robustscaler`).
+- [ ] **USER:** run the §4.2b migration cell ONCE, then re-run §4.1 (regen QT splits) + re-tune/re-train
+      MPNN2 across HLM/MDR1/SOL/RLM (CPU-only; batch with other MPNN reruns).
+- [ ] **Deferred:** MPNN4 = QT-uniform on the 200 unnormalized rdkit_2d (clean feature-count control).
+
+## Follow-ups (logged, not yet scheduled)
+- **Single SMILES source**: make §2.2 similarity plots + §5.7 Table 2 read from `df_sdf` (SDF) instead
+  of the CSV `df`, so the §2.4a reconciliation check is no longer needed. #5 showed only 1–3 molecules
+  differ (standardisation), so this is minor cleanup, not a correctness issue.
 

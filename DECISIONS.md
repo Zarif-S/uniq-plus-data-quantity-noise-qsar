@@ -387,6 +387,14 @@ Paper used a specific subset of 316 rdMolDescriptors calls (not `Descriptors.des
 **MPNN featurization — rdkit_2d_normalized (descriptastorus, 200 features), not rdMolDes**
 The paper's MPNN uses `--features_generator rdkit_2d_normalized` (ChemProp calls descriptastorus internally). This is a different descriptor set from rdMolDes (316). Our `rdkit_2d_features()` calls descriptastorus directly — same 200 features. Do not normalize rdMolDes as a substitute; they are different descriptor sets.
 
+**MPNN2 upstream scaling — QuantileTransformer(uniform), not RobustScaler (2026-08-03)**
+- **Intent**: MPNN2 exists to isolate one question — *does swapping the 200-feature rdkit_2d_normalized set for our 316 rmoldes change MPNN performance?* MPNN3 is the paper-faithful variant (graph + ChemProp's own rdkit_2d_normalized, CDF-normalized by descriptastorus) and must stay unchanged.
+- **Confound (the problem)**: MPNN2 previously fed RobustScaler'd rmoldes (the shared `X_train_scaled`). That differs from MPNN3 in *two* ways at once: feature set (316 vs 200) **and** normalization (RobustScaler — linear, unbounded tails — vs CDF — bounded [0,1], uniform). RobustScaler leaves AUTOCORR2D (192 cols) and MQN (42) with heavy unbounded tails that can destabilise the FFN, plausibly handicapping MPNN2 for reasons unrelated to feature *content*. It also mismatched the paper's philosophy (the paper applies RobustScaler only to the traditional ML models, never the MPNN).
+- **Fix**: scale MPNN2's 316 rmoldes with `QuantileTransformer(output_distribution='uniform', n_quantiles=min(1000, n_train), subsample=10000, random_state=42)`, fit on `X_train` only (transform val/test), keeping `--no_features_scaling`. QT-uniform is the closest analogue to rdkit_2d_normalized's CDF (percentile → uniform [0,1], bounded, outlier-robust). Applied upstream in the §4.1 splits (`X_train_qt`/`X_test_qt`, rdkit featureset only) — MPNN1/MPNN3 and the classical models' RobustScaler are untouched.
+- **Residual limitation (logged, not fixed)**: QT is *empirical* and fit on our ~1–3k training molecules; descriptastorus's CDF is *parametric*, fit on a large external corpus (so it extrapolates, whereas QT clamps out-of-range test values to 0/1). Same family, minor mechanism difference — acceptable.
+- **Kept old run**: the RobustScaler MPNN2 is preserved as model `MPNN2_robustscaler` (featureset `graph_rdkit`) via a one-time checkpoint migration — the RobustScaler-vs-QT delta is itself a reportable result.
+- **Deferred (MPNN4)**: the cleanest feature-*count* control would be QT-uniform on the 200 *unnormalized* rdkit_2d descriptors, so MPNN4-vs-MPNN2 differ only in feature set (identical transform). Needs a 4th variant because MPNN3 must stay paper-faithful. Deferred; implement only if time permits.
+
 **Cross-validation — GridSearchCV with RepeatedKFold, random fold assignment**
 Paper used `GridSearchCV` with `RepeatedKFold(n_splits=5, n_repeats=3, random_state=128)`. Random fold assignment — not scaffold-based for now, todo later. Temporal splits not applicable to public dataset (no time index).
 
@@ -482,7 +490,13 @@ After this ADR chose Option A, a RAM scare prompted reverting the code to **Opti
 
 ---
 
-**Last Updated**: 2026-08-02
+### Update (2026-08-03) — Single source of truth for both `n_jobs` knobs
+
+Previously `n_jobs_model=-1` lived in `src/hyperparams/hyperparams.py` (baked into `param_base_*` at import) while `n_jobs_cv=1` was redefined in the notebook — two files that could silently disagree and re-trigger the oversubscription trap. **Both knobs now live in `hyperparams.py`** (`n_jobs_cv` added next to `n_jobs_model`, exported via `__init__.py`); the notebook **imports** them in §0 instead of redefining, so the Option-B invariant (`model=-1` ⇒ `cv=1`) is enforced in one place. No behaviour change — same values, single source. (Notebook-only was not chosen: `param_base_*` need `n_jobs_model` at import time.)
+
+---
+
+**Last Updated**: 2026-08-03
 
 ---
 
@@ -529,5 +543,64 @@ The four architecture hyperparameters were pinned (they define MPNN S14) but the
 ---
 
 **Last Updated**: 2026-08-02
+
+---
+
+---
+
+## ADR-010 — Per-Group (Not Pooled) Normality Check for the Section 5.5 ANOVA
+
+**Date**: 2026-08-03
+**Status**: Decided
+**Decider**: Zarif
+
+---
+
+### Context
+
+The Section 5.5 per-endpoint `AnovaRM` assumes normality of the residuals. Normality was
+diagnosed in the notebook with a Shapiro-Wilk test + Q-Q plot computed **per (endpoint, model)
+group** on the raw 15 CV Pearson-r scores, rather than on the pooled ANOVA residuals (the more
+conventional single-Q-Q-per-endpoint diagnostic).
+
+---
+
+### Decision
+
+Keep the per-group diagnostic. It is valid, not a substitute error for pooling.
+
+> Normality was checked per-group rather than on pooled residuals. Within a group, residuals
+> differ from the raw Pearson-r values only by a constant (the group mean), so the shape — and
+> hence the Q-Q/skew/kurtosis — is identical; the per-group view is simply a finer diagnostic
+> that also reveals which model deviates.
+
+---
+
+### Rationale
+
+Within a single group the residual is `r_i − mean(group)`, i.e. the raw values shifted by a
+constant. A constant shift leaves skew, excess kurtosis, and the Q-Q pattern unchanged, so
+testing the per-group raw scores is equivalent *in shape* to testing per-group residuals. The
+per-group view is strictly more informative than the pooled one because it localises *which*
+model's distribution deviates — here it flagged HLM/MPNN2 (skew −1.16) and MDR1/RF (skew +1.56,
+excess kurtosis +2.25) individually, which a single pooled Q-Q would have blurred together.
+With only 15 folds per group, both Shapiro-Wilk (low power at n=15) and the skew/kurtosis
+estimates are noisy, so the numbers are read as indicative, not definitive.
+
+---
+
+### Consequence
+
+RM-ANOVA is robust to mild non-normality under this balanced design, and the omnibus F values on
+the strong endpoints are large, so the ANOVA conclusions stand. The one localised caveat is
+**Tukey HSD pairwise rows involving RF at MDR1**: RF's MDR1 group is right-skewed with a heavy
+tail (an outlier fold ≈0.76) that inflates its variance, straining Tukey's normality + equal-
+variance assumptions for those specific comparisons — noted in the notebook. HLM/MPNN2 is not
+pursued (that data is being migrated). No non-parametric cross-check (Friedman/Nemenyi) was added:
+SOL and RLM satisfied normality, so their mismatch against the paper is a reproduction question,
+not an assumption-validity one, and the deviating groups sit on endpoints whose omnibus verdicts
+are unaffected.
+
+---
 
 *Add new ADRs above this line, numbered sequentially.*

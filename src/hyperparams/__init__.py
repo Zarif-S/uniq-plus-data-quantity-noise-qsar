@@ -1,5 +1,6 @@
 from .hyperparams import (
     n_jobs_model,
+    n_jobs_cv,
     param_base_RF, param_search_RF,
     param_base_SVM, param_search_SVM,
     param_base_XGB, param_search1_XGB, param_search2_XGB, param_search3_XGB,
@@ -16,6 +17,7 @@ from .hyperparams import (
 
 __all__ = [
     "n_jobs_model",
+    "n_jobs_cv",
     "param_base_RF", "param_search_RF",
     "param_base_SVM", "param_search_SVM",
     "param_base_XGB", "param_search1_XGB", "param_search2_XGB", "param_search3_XGB",

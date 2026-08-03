@@ -13,6 +13,13 @@
 # sets n_jobs_cv=-1, this MUST become 1 in the same change (the oversubscription trap).
 n_jobs_model = -1
 
+# Outer-CV / GridSearchCV parallelism. This is the SINGLE SOURCE OF TRUTH for both parallelism knobs
+# (n_jobs_model + n_jobs_cv) — the notebook imports these rather than redefining them, so the two can
+# never drift out of sync. Option B requires n_jobs_cv=1 whenever n_jobs_model=-1: the estimator owns
+# all cores and the outer loop runs serially = one parallelism layer only. If you ever flip to
+# n_jobs_cv=-1, n_jobs_model MUST become 1 in the same change (the oversubscription trap).
+n_jobs_cv = 1
+
 # set up Random Forest parameters
 
 # oob_score=False: tuning selects on CV R2 and eval reports Pearson r; .oob_score_ is never read
