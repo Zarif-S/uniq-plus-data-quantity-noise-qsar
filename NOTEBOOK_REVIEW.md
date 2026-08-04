@@ -103,8 +103,15 @@ Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP
 - [x] **#2** readability: unchained the semicolon lines I'd added (§3 cache ×2, §4.2b MPNN print ×1).
 - [x] **#1 / Batch H part 2** plot flag + plotly HTML saving (see Batch H above).
 
-## OUTSTANDING (future work)
-1. **§5.5–5.7 simplification pass** — what the #21 markers flag (readability / var reuse).
-2. **Single SMILES source** — make §2.2 plots + §5.7 Table 2 read from `df_sdf`, retiring the §2.4a
-   check (deltas are only 1–3 molecules; cosmetic).
-3. **MPNN4 control** (deferred, see Batch I) · **§4.4 scaffold split** (pre-existing TODO in `01.5`).
+## Done 2026-08-04 (round 2)
+- [x] **§5.5 simplification** — merged cell 32's duplicate `r_vals` loops; removed 2 dangling-var dev
+      cells (37/40); cleaned a leftover comment. `01.6` re-ran clean. (§5.6/§5.7 already clean.)
+- [x] **§5.7 → df_sdf** (single source w/ modelling): §2.2 KEPT on CSV (matches paper, plot-only, never
+      touches modelling — confirmed). §5.7 Table 2 now from `df_sdf` (persisted `section4_df_sdf.pkl`,
+      loaded in `01.6`). Verified counts: model endpoints −1 (standardisation), PPB +augmentation.
+
+## OUTSTANDING
+1. **MPNN4 control** — QT-uniform on the 200 *unnormalized* rdkit_2d (vs MPNN2's 316 rmoldes = feature
+   count; vs MPNN3's CDF = normalization). Needs: unnormalized rdkit_2d featurizer, §3 compute, §4.1
+   MPNN-only split+QT, §4.2b/§4.3a/§4.3b feature-source mapping, re-run. IN PROGRESS.
+2. **§4.4 scaffold split** — pre-existing TODO in `01.5`; user parking alongside data-quantity/noise work.
