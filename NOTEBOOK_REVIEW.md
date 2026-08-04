@@ -1,120 +1,104 @@
-# Notebook Review — `notebooks/01.5_adme_biogen_public_recreation.ipynb`
+# Notebook Review — `01.5_adme_biogen_public_recreation.ipynb` + `01.6_adme_paper_recreation_results.ipynb`
 
-Working checklist for the full review. Items grouped into **dispatchable batches** so each
-can be handed to a fresh Claude CLI session without collisions. Ordering matters only where
-noted (Batch A first — it changes featureset counts that later prose describes).
+Review checklist. Batches A–I are **complete** and were verified by a full overnight run
+(2026-08-03 → 04): `01.5` produced 156 base + 12 tuned result rows; `01.6` re-ran clean (0 error
+cells) and regenerated all §5 figures. Remaining work is the **Outstanding** section at the bottom.
 
-> Notebook is ~110 cells and too large to Read in one pass. To inspect: `json.load` the
-> `.ipynb` and filter by cell `id`; to edit: count-asserted raw-text `str.replace` then
-> `json.loads` to validate. (See MEMORY.md "Known Infrastructure Issues".)
+> Notebooks are large. To inspect: `json.load` the `.ipynb` and filter by cell `id`; to edit:
+> count-asserted raw-text `str.replace` then `json.loads` to validate. New CLAUDE.md convention:
+> notebook code favours readability (one statement per line, no semicolon-chaining).
 
-## Agreed execution order (2026-08-03)
-1. **F #21** — trivial markers
-2. **B, C, D** — safe, independent (parallelizable across sessions)
-3. **G** — do it early (before A): not quick (~1 session) but high-leverage; shrinks the
-   file every later batch must parse. After G, A spans both notebooks (clean checkpoint boundary).
-4. **A** — ecfp4, now on the smaller split notebooks
-5. **E + H together** — post-A doc updates. Make **H programmatic** (print fit count from
-   `len(FEATURESETS)×…`) so it never goes stale as featuresets change.
+## Status summary
+| Batch | What | State |
+|---|---|---|
+| G | Split into `01.5` (§0–§4) + `01.6` (§5) | ✅ |
+| A | ECFP4 as modelling representation (5 featuresets) | ✅ verified |
+| B | §2.2 / §2.2c plot styling | ✅ |
+| C | §0 consolidation + renames | ✅ (see #19 correction) |
+| D | Data-integrity checks | ✅ ran + passed overnight |
+| E | Doc / markdown updates | ✅ |
+| F | Questions answered + #21 markers | ✅ |
+| H | Fit-count prints (part 1) | ✅ · part 2 outstanding |
+| I | MPNN2 RobustScaler → QuantileTransformer | ✅ verified |
 
 ---
 
-## Batch A — ECFP4 feature thread — ✅ DONE (decisions: base-arm only, + ecfp4-hybrid)
-Featuresets 3→5: `fcfp4`, `rdkit`, `hybrid`, **`ecfp4`**, **`hybrid_ecfp4`** (ecfp4+rdMolDes).
-- [x] **src**: `morgan_fingerprints` gained `use_features=True` param (`False`→ECFP4 numpy matrix);
-      docstring, `features/CLAUDE.md`, and a new sanity test updated. 122 tests pass.
-- [x] **DECISIONS.md**: ADR added — ECFP4 promoted from comparison-only to a modelling representation.
-- [x] **#6** §3 (cell 51): `X_ecfp4` + `X_hybrid_ecfp4` added to `feat`.
-- [x] **#6.5** §3 cache: `section3_feat.pkl`, `RECOMPUTE_FEAT` flag, auto-rebuild if keys missing.
-- [x] **#8** §4.1 (cell 58): `FEATURESETS` → 5. Splits auto-expand.
-- [x] **#17** `01.6` §5.3b (cells 18/19) + dummy harness (cell 11) extended to 5 featuresets.
-- [ ] **USER re-run:** §3 (rebuilds cache+splits) → §4.2 base loop (checkpointed → +2 fs × 5 models
-      × 4 ep = 40 new base keys) → `01.6` §5.3b.
+## Batch A — ECFP4 feature thread — ✅ DONE + verified
+Featuresets 3→5: `fcfp4`, `rdkit`, `hybrid`, **`ecfp4`**, **`hybrid_ecfp4`** (ecfp4+rdMolDes). Base arm.
+- [x] **src** `morgan_fingerprints(use_features=…)` (`False`→ECFP4 matrix) + docstring + `features/CLAUDE.md` + test
+- [x] **DECISIONS.md** ADR: ECFP4 promoted from comparison-only to a modelling representation
+- [x] **#6** §3: `X_ecfp4` + `X_hybrid_ecfp4`; **#6.5** `section3_feat.pkl` cache (`RECOMPUTE_FEAT`, auto-rebuild)
+- [x] **#8** §4.1 `FEATURESETS` → 5; **#17** `01.6` §5.3b + dummy harness extended
+- [x] Overnight run: ecfp4 + hybrid_ecfp4 base keys present in checkpoint
 
-## Batch B — Plot styling (independent, safe) — ✅ DONE (in 01.5)
-Final encoding (per user): colour = METRIC (Dice=steelblue, Tanimoto=darkorange),
-line style = FINGERPRINT (FCFP4=solid, ECFP4=dotted). Every curve distinct.
-- [x] **#3** §2.2 pairwise-similarity plot (cell 30)
-- [x] **#4** §2.2c max-neighbour plot (cells 32+33) — same encoding for consistency
+## Batch B — Plot styling — ✅ DONE (`01.5`)
+Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP4=solid, ECFP4=dotted).
+- [x] **#3** §2.2 pairwise-similarity · **#4** §2.2c max-neighbour (same encoding)
 
-## Batch C — Section-0 consolidation + renames (mechanical) — ✅ DONE
-- [x] **#1** No `SPLIT_FILE` refs found — already removed by user. Nothing to do.
-- [x] **#14** `import json` moved to `01.5` §0 cell 2 (removed from 4.3a). `TUNED_PARAMS_PATH`
-      LEFT in 4.3a on purpose — consistent with `RESULTS_CSV`/`PREDICTIONS_PKL` (defined in 4.2,
-      not §0). Centralising all three checkpoint paths to §0 is a separate optional cleanup.
-- [x] **#19** `from scipy import stats` moved to `01.6` §0 cell 3 (removed from §5.5 cells 32 & 34).
-- [x] **#2** Global `fps` → `fcfp4_fps` (`01.5` cells 29, 32). Generic function param
-      `max_neighbor_sims(fps, ...)` intentionally kept — it takes both fcfp4 and ecfp4 fps.
-- [x] **#20** `hlm_df` → `norm_check_df` + `NORM_CHECK_EP='HLM'` toggle (`01.6` §5.5) — swap one
-      value to check SOL/RLM/MDR1. (`norm_df` was taken by the shape-stats cell.)
+## Batch C — §0 consolidation + renames — ✅ DONE
+- [x] **#1** No `SPLIT_FILE` refs (already gone)
+- [x] **#14** `import json` → `01.5` §0. `TUNED_PARAMS_PATH` left in 4.3a (consistent with RESULTS/PREDICTIONS paths)
+- [x] **#2** `fps` → `fcfp4_fps` (generic fn param kept)
+- [x] **#20** `hlm_df` → `norm_check_df` + `NORM_CHECK_EP` toggle (`01.6` §5.5)
+- [x] **#19 (CORRECTED)** `from scipy import stats` in `01.6` §0. Removing the *local* imports from the
+      §5.5 cells was WRONG — §5.4 rebinds `stats` to a DataFrame and shadows the module, which broke the
+      overnight `01.6` run. Final fix (below, "shadow bug"): rename the shadowing vars, keep §0 import only.
 
-## Batch D — Data-integrity checks (additive) — ✅ DONE (cells written; USER MUST RUN)
-Key finding: **model features (§3) come from `df_sdf` (SDF), not CSV `df`**. CSV `df` is only used
-for §2.1 stats, §2.2 similarity plots, §5.7 Table 2.
-- [x] **#5** New §2.4a reconciliation cell (report): CSV vs SDF molecules per endpoint on a
-      `standardize()`-canonical key. Expect small CSV-only (std losses) for HLM/MDR1/SOL/RLM,
-      large SDF-only for PPB (augmentation). Non-failing report — interpret after running.
-- [x] **#12** New assertion cell after §4.1 splits: SMILES identical across featuresets +
-      `morgan_fingerprints(smiles_train) == X_train`. Guarantees the row-alignment MPNN2/3
-      `column_stack` relies on. Hard asserts — construction-guaranteed to pass.
-- [x] **#16** Answered in Batch F (was a question, no edit).
-- [ ] **USER:** run §2.4a (#5) and the §4.1 check (#12) once to confirm.
+## Batch D — Data-integrity checks — ✅ DONE + ran overnight
+- [x] **#5** §2.4a CSV↔SDF reconciliation report (ran; small std-loss deltas as expected)
+- [x] **#12** §4.1 SMILES row-alignment asserts — **passed** (overnight `01.5` completed, so asserts held)
+- [x] **#16** answered in Batch F
 
-## Batch E — Doc / markdown updates (DO AFTER Batch A)
-Depends on final featureset count + ARMS decision.
-- [ ] **#7** Rewrite 4.0 runtime note (the 4×3×5×2=120 math changes with ecfp4)
-- [ ] **#11** Update 4.2 header (FCNN now included) + explain `clone(...)` (answered in Batch F)
-- [ ] **#13a** Add MPNN3 rationale note in 4.3 (why mpnn3 = faithful recreation of paper's MPNN2)
-- [x] **#13b** RobustScaler question RESOLVED via Batch I (MPNN2 → QuantileTransformer). See below.
-- [ ] **#9** Consolidate `n_jobs` to ONE place (notebook, not `hyperparams.py`) + update
-      `DECISIONS.md` (ADR-008) and `MEMORY.md`
-- [ ] **#10** Tidy `ARMS = ('base',)` — the 'tuned' branch is dead in 4.2 (produced by 4.3b)
+## Batch E — Doc / markdown updates — ✅ DONE
+- [x] **#7** §4.0 runtime note rewritten (stale-proof; points to programmatic counts)
+- [x] **#11** §4.2 header (FCNN/BayesianRidge) + `clone(...)` explanation
+- [x] **#13a** MPNN3 rationale note in §4.3 · **#13b** RobustScaler resolved via Batch I
+- [x] **#9 (as-built)** `n_jobs` consolidated into **`src/hyperparams.py`** (both `n_jobs_model` +
+      `n_jobs_cv`; notebook imports them) — NOT the notebook, because `param_base_*` need `n_jobs_model`
+      at import. ADR-008 addendum + `MEMORY.md` updated. (Original note said "notebook" — superseded.)
+- [x] **#10** dead `if arm == 'tuned'` branch removed from §4.2 base loop
 
-## Batch F — Questions (answered inline in review response; no edits except #21 marker)
-- [x] **#11** what `clone(paper_models[model_name])` does
-- [x] **#15** `_tkey` / `_parse_tkey` / `_kw` / `Xtr` / `fkey` explained
-- [x] **#16** why `smi_tr`/`smi_te` in 4.3b (vs §3)
-- [x] **#18** mpnn2 & mpnn3 identical similarity binning — expected?
-- [x] **#20** does kernel reset / seed change 5.5 results?
-- [x] **#21** REVIEW markers added to 5.5, 5.6, 5.7 (now in `01.6`). Reworded to a light
-      **code-quality** note (can it be simplified / vars reused?) — NOT "logic unverified".
-      The actual simplification pass is a separate future task on 5.5–5.7.
+## Batch F — Questions — ✅ answered
+- [x] **#11** `clone` · **#15** `_tkey`/`_parse_tkey`/`_kw`/`Xtr`/`fkey` · **#16** `smi_tr`/`smi_te`
+- [x] **#18** mpnn2/mpnn3 identical sim-binning (expected) · **#20** 5.5 determinism
+- [x] **#21** REVIEW markers on 5.5–5.7 (light code-quality tone). Simplification pass itself = outstanding
 
-## Batch G — Notebook split (NEW, structural) — ✅ DONE (01.5→73 cells, 01.6→46 cells)
-- [x] Created `notebooks/01.6_adme_paper_recreation_results.ipynb` (46 cells vs 112):
-      §0 setup + §0.1 endpoint constants (`ENDPOINTS`/`ENDPOINT_COLS`/`MODEL_ENDPOINTS`,
-      the only cross-section deps) + disk-loader + §5. Verified self-contained (AST scan, 0 gaps).
-- [x] `01.5` cell 56 now also `joblib.dump(df, 'section4_df.pkl')` (§5.7 Table 2 needs raw df;
-      df is not reassigned after cell 56, so this is faithful to the monolithic run).
-- [x] `01.6` loader loads `df` from that pkl.
-- [x] Deleted §5 (cells 73–111) from `01.5` → 73 cells. `df` dump relocated to cell 23
-      (df immutable after load). User's `#fig.show()` edits preserved.
-- [x] **Before 01.6 runs:** run `01.5` top → §2.0 (cell 23) ONCE to generate `section4_df.pkl`
-      (not yet on disk). Other checkpoint pkls already exist.
-- [ ] Stale note: `01.5` §5 harness markdown ("run 0–section 3") — now lives in `01.6` as 5.pre,
-      already rewritten there. The `01.5` §4.4 "come back after section 5" note is now cross-notebook.
+## Batch G — Notebook split — ✅ DONE
+- [x] `01.6` created (self-contained: §0 + endpoint constants + disk-loader + §5)
+- [x] `df` persisted at `01.5` cell 23 → `section4_df.pkl`; `01.6` loads it; §5 removed from `01.5`
+- [x] `section4_df.pkl` generated + loaded (overnight run)
+- [ ] Minor: `01.5` §4.4 "come back after section 5" note is now cross-notebook (cosmetic)
 
-## Batch H —
-- Add number of fits to model training, eval, tuning sections so its clear why it might take long to run from fresh
-- I put 3 ';' after update layout and commented out fig.show() in 01_5 notebook, must be a better way to hide/show plots? maybe a flag for them to be shown/hidden? Might help if we saved the plots to the machine, that way they can always be hidden and I can change the flags as and when its needed? I noticed none of the plotly plots are saved? I noticed that when the plots are showing, it makes it hard to save my notebook.
+## Batch H — ✅ part 1 done · ⏳ part 2 outstanding
+- [x] **Part 1** fit-count prints in §4.2 / §4.2b / §4.3a
+- [ ] **Part 2** plot show/hide **flag** + **save plotly figures** to disk (replace the `;` + commented
+      `fig.show()` workaround; plotly plots currently aren't saved, and showing them bloats/locks the file)
 
-## Batch I — MPNN2 normalization fix (handoff from another session) — ✅ DONE (code); USER re-runs
-Switch MPNN2's rmoldes scaling RobustScaler → QuantileTransformer(uniform) so it stops confounding
-the 316-vs-200 feature comparison with a normalization difference (MPNN3's CDF). Full rationale in
-DECISIONS.md (2026-08-03 entry).
-- [x] `01.5` §4.1 splits: added `X_train_qt`/`X_test_qt` (rdkit fs only, fit on raw X_train,
-      `QuantileTransformer(output_distribution='uniform', n_quantiles=min(1000,n), subsample=10000, seed=42)`).
-- [x] `01.5` §0 import: `QuantileTransformer`.
-- [x] MPNN2 repointed to QT in §4.2b, §4.3a, §4.3b (MPNN1/MPNN3 untouched; shared RobustScaler untouched).
-- [x] `mpnn.py` docstring updated.
-- [x] DECISIONS.md ADR (intent / confound / fix / residual limitation / kept old run / deferred MPNN4).
-- [x] §4.2b markdown note (residual limitation) + one-time migration cell (`MPNN2` → `MPNN2_robustscaler`).
-- [ ] **USER:** run the §4.2b migration cell ONCE, then re-run §4.1 (regen QT splits) + re-tune/re-train
-      MPNN2 across HLM/MDR1/SOL/RLM (CPU-only; batch with other MPNN reruns).
-- [ ] **Deferred:** MPNN4 = QT-uniform on the 200 unnormalized rdkit_2d (clean feature-count control).
+## Batch I — MPNN2 RobustScaler → QuantileTransformer — ✅ DONE + verified
+- [x] §4.1 splits `X_train_qt`/`X_test_qt` (rdkit fs, fit on raw X_train, QT uniform, seed 42)
+- [x] §0 import `QuantileTransformer`; MPNN2 repointed in §4.2b/§4.3a/§4.3b (MPNN1/MPNN3 untouched)
+- [x] `mpnn.py` docstring + DECISIONS.md ADR + §4.2b residual-limitation note + migration cell
+- [x] Overnight run: migration ran, `MPNN2` (QT) + `MPNN2_robustscaler` both in checkpoint
+- [ ] **Deferred:** MPNN4 = QT-uniform on the 200 unnormalized rdkit_2d (clean feature-count control)
 
-## Follow-ups (logged, not yet scheduled)
-- **Single SMILES source**: make §2.2 similarity plots + §5.7 Table 2 read from `df_sdf` (SDF) instead
-  of the CSV `df`, so the §2.4a reconciliation check is no longer needed. #5 showed only 1–3 molecules
-  differ (standardisation), so this is minor cleanup, not a correctness issue.
+## Tuning scope (decided 2026-08-03, ran overnight) — ✅ DONE
+- [x] Tuned arm = **RF, LightGBM (hybrid) + MPNN3 only** (`TUNE_CLASSICAL=['RF','LightGBM']`,
+      `MPNN_TUNE_MODELS=['MPNN3']`, `TUNE_FCNN=False`, `TUNE_FEATURESETS=['hybrid']`; §4.3b scoped).
+      All 12 keys already cached → eval-only, no re-tuning. Verified: 12 tuned rows in checkpoint.
 
+## `stats` shadow bug — ✅ FIXED (regression from #19)
+- [x] §5.4 `stats` DataFrame → `bin_stats`; Fig 7 `stats` list → `fig7_stats`; both guard re-imports
+      removed; §0's `from scipy import stats` now stands alone. `01.6` re-ran clean.
+- [x] Cell-id normalization on both notebooks (silences nbformat MissingIDFieldWarning)
+
+---
+
+## OUTSTANDING (future work)
+1. **Batch H part 2** — plot show/hide flag + save plotly figures to disk.
+2. **Readability cleanup** — semicolon-chained lines I added (§3 cache, migration cell, an MPNN
+   print, tuning fit-estimate) violate the new one-statement-per-line convention.
+3. **FIG7_MODEL_FS** — drop the now-dead `'MPNN2'` key (MPNN2 no longer in `FIG7_MODELS`).
+4. **§5.5–5.7 simplification pass** — what the #21 markers flag (readability / var reuse).
+5. **Single SMILES source** — make §2.2 plots + §5.7 Table 2 read from `df_sdf`, retiring the §2.4a
+   check (deltas are only 1–3 molecules; cosmetic).
+6. **MPNN4 control** (deferred, see Batch I) · **§4.4 scaffold split** (pre-existing TODO in `01.5`).

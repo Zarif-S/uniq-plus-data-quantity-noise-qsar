@@ -485,7 +485,7 @@
     "ffn_num_layers": 2,
     "_mode": "full"
   },
-  "HLM|graph_rdkit|MPNN2": {
+  "HLM|graph_rdkit|MPNN2_robustscaler": {
     "hidden_size": 1800,
     "depth": 3,
     "dropout": 0.25,
@@ -499,7 +499,7 @@
     "ffn_num_layers": 3,
     "_mode": "full"
   },
-  "MDR1|graph_rdkit|MPNN2": {
+  "MDR1|graph_rdkit|MPNN2_robustscaler": {
     "hidden_size": 2200,
     "depth": 3,
     "dropout": 0.30000000000000004,
@@ -513,7 +513,7 @@
     "ffn_num_layers": 1,
     "_mode": "full"
   },
-  "SOL|graph_rdkit|MPNN2": {
+  "SOL|graph_rdkit|MPNN2_robustscaler": {
     "hidden_size": 300,
     "depth": 6,
     "dropout": 0.4,
@@ -591,7 +591,7 @@
     "ffn_num_layers": 2,
     "_mode": "full"
   },
-  "RLM|graph_rdkit|MPNN2": {
+  "RLM|graph_rdkit|MPNN2_robustscaler": {
     "hidden_size": 1700,
     "depth": 3,
     "dropout": 0.4,
