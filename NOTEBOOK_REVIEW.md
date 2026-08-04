@@ -69,10 +69,13 @@ Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP
 - [x] `section4_df.pkl` generated + loaded (overnight run)
 - [ ] Minor: `01.5` §4.4 "come back after section 5" note is now cross-notebook (cosmetic)
 
-## Batch H — ✅ part 1 done · ⏳ part 2 outstanding
-- [x] **Part 1** fit-count prints in §4.2 / §4.2b / §4.3a
-- [ ] **Part 2** plot show/hide **flag** + **save plotly figures** to disk (replace the `;` + commented
-      `fig.show()` workaround; plotly plots currently aren't saved, and showing them bloats/locks the file)
+## Batch H — ✅ DONE
+- [x] **Part 1** fit-count prints in §4.2 / §4.2b / §4.3a (programmatic, not hardcoded)
+- [x] **Part 2** `SHOW_PLOTS` flag in both notebooks. `01.5`: `render_plotly(fig, name)` saves each
+      plotly figure to `figures/<name>.html` and shows only if `SHOW_PLOTS` (3 cells). `01.6`:
+      `maybe_show()` gates all `plt.show()`; added `savefig` to §5.5 cells 32/34. Plotly HTML gitignored
+      (large, regenerable). Verified: `01.6` re-ran clean; plotly `.show()` works under nbconvert.
+      NOTE: default `SHOW_PLOTS=True`; set **False** for unattended nbconvert runs to keep the .ipynb lean.
 
 ## Batch I — MPNN2 RobustScaler → QuantileTransformer — ✅ DONE + verified
 - [x] §4.1 splits `X_train_qt`/`X_test_qt` (rdkit fs, fit on raw X_train, QT uniform, seed 42)
@@ -93,12 +96,15 @@ Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP
 
 ---
 
+## Done post-commit (2026-08-04)
+- [x] **Point 2** MPNN1 added to tuning scope (`MPNN_TUNE_MODELS=['MPNN1','MPNN3']`). NOTE: MPNN1
+      params already cached (full) → §4.3a skips re-tuning, §4.3b evaluates it (that eval = the run cost).
+- [x] **#3** dropped dead `'MPNN2'` key from `FIG7_MODEL_FS`.
+- [x] **#2** readability: unchained the semicolon lines I'd added (§3 cache ×2, §4.2b MPNN print ×1).
+- [x] **#1 / Batch H part 2** plot flag + plotly HTML saving (see Batch H above).
+
 ## OUTSTANDING (future work)
-1. **Batch H part 2** — plot show/hide flag + save plotly figures to disk.
-2. **Readability cleanup** — semicolon-chained lines I added (§3 cache, migration cell, an MPNN
-   print, tuning fit-estimate) violate the new one-statement-per-line convention.
-3. **FIG7_MODEL_FS** — drop the now-dead `'MPNN2'` key (MPNN2 no longer in `FIG7_MODELS`).
-4. **§5.5–5.7 simplification pass** — what the #21 markers flag (readability / var reuse).
-5. **Single SMILES source** — make §2.2 plots + §5.7 Table 2 read from `df_sdf`, retiring the §2.4a
+1. **§5.5–5.7 simplification pass** — what the #21 markers flag (readability / var reuse).
+2. **Single SMILES source** — make §2.2 plots + §5.7 Table 2 read from `df_sdf`, retiring the §2.4a
    check (deltas are only 1–3 molecules; cosmetic).
-6. **MPNN4 control** (deferred, see Batch I) · **§4.4 scaffold split** (pre-existing TODO in `01.5`).
+3. **MPNN4 control** (deferred, see Batch I) · **§4.4 scaffold split** (pre-existing TODO in `01.5`).
