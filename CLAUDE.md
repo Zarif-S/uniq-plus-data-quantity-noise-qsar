@@ -138,6 +138,19 @@ uv add <package>   # updates pyproject.toml and uv.lock
 2. Every notebook must run top-to-bottom from a fresh kernel — verify before committing
 3. If a helper function is used in more than one notebook, move it to `src/`
 
+### Inspecting notebook cells (AI agents)
+
+Some notebooks (e.g. `01.5_adme_biogen_public_recreation.ipynb`) are too large to load via the Read tool — cell outputs embed base64 image blobs that blow past token limits. Use `tools/inspect_notebook.py` instead of ad-hoc `python3 -c`/heredoc scripts:
+
+```bash
+python3 tools/inspect_notebook.py list-cells <notebook.ipynb>
+python3 tools/inspect_notebook.py cell <notebook.ipynb> --id <cell_id>   # or --index <n>
+python3 tools/inspect_notebook.py find-images <notebook.ipynb>
+python3 tools/inspect_notebook.py search <notebook.ipynb> <substring>
+```
+
+It's allow-listed in `.claude/settings.local.json`, so it runs without a permission prompt — one-off heredocs still prompt every time.
+
 ---
 
 ## Coding Conventions

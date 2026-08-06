@@ -31,6 +31,7 @@ dependencies = [
     "noiseestimator>=0.0.1",
     "statsmodels>=0.14.6",
     "nbconvert>=7.17.1",
+    "mmpdb>=2.1",
 ]
 
 [tool.uv]

@@ -16,6 +16,7 @@ Reusable Python modules imported by notebooks. Each module is a subpackage with 
 | `splitting` | Pre-defined train/test splits from PDE10A CSV columns (7 strategies) | [splitting/CLAUDE.md](splitting/CLAUDE.md) |
 | `tuning` | Hyperparameter tuning (LightGBM, RF) + frozen param management | [tuning/CLAUDE.md](tuning/CLAUDE.md) |
 | `noise` | Label noise injection (Gaussian, systematic bias, gross errors) | [noise/CLAUDE.md](noise/CLAUDE.md) |
+| `mmp` | Matched Molecular Pair rule database (mmpdb CLI wrapper) | [mmp/CLAUDE.md](mmp/CLAUDE.md) |
 
 ---
 
@@ -47,6 +48,7 @@ Entry points per submodule:
 | `splitting` | `get_split`, `list_split_cols` |
 | `tuning` | `tune_lightgbm`, `tune_rf`, `make_model`, `save_params`, `load_params` |
 | `noise` | `add_gaussian_noise`, `add_systematic_bias`, `add_gross_errors` |
+| `mmp` | `write_smi_file`, `write_properties_file`, `run_fragment`, `run_index`, `significant_rules` |
 
 ### Invariants
 

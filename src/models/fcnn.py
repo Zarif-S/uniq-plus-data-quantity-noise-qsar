@@ -9,6 +9,18 @@ has NO batch-normalization support — its torch module is a plain Linear/dropou
 Per the 2026-07-29 decision, batch_norm is accepted for config fidelity but IGNORED at fit time
 with a warning (option A: thin wrapper, FCNN is a lower-rigor secondary model).
 
+weight_init_stddevs / no `init` param: the paper's FCNN_public.py also passes
+init="glorot_uniform" to dc.models.MultitaskRegressor — intending Glorot-uniform weight init.
+Confirmed against DeepChem 2.1.0 source, the exact version the paper ran on (see DECISIONS.md
+ADR-007 "FCNN" entry, 2026-08-06): `init` was never a real parameter of MultitaskRegressor at
+that version — it silently fell into **kwargs and was never read, so the paper's OWN reported
+results were produced with the hardcoded `tf.truncated_normal_initializer(stddev=weight_init_stddevs)`,
+never Glorot, regardless of what the script says. `weight_init_stddevs=0.02` here happens to match
+that actual behavior — not because we deliberately reproduced it, but because that's simply how
+this class was already built (weight_init_stddevs is a real, working parameter in DeepChem 2.8.0).
+Do NOT "fix" this by adding a Glorot-uniform initializer to try to honor the paper's script more
+literally — that would diverge from what the paper's own numbers were actually produced with.
+
 DeepChem/torch are imported lazily inside fit/predict — importing this class is cheap and does not
 trigger DeepChem's noisy optional-dependency warnings.
 """
