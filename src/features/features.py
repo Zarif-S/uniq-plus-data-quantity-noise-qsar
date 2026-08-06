@@ -147,12 +147,19 @@ def rdmoldes(mols):
     return np.array(records, dtype=np.float64)
 
 
-def rdkit_2d_features(smiles_list):
-    """Return (N, 200) normalized RDKit 2D descriptor array via descriptastorus."""
-    from descriptastorus.descriptors import rdNormalizedDescriptors
+def rdkit_2d_features(smiles_list, normalized=True):
+    """Return (N, 200) RDKit 2D descriptor array via descriptastorus.
+
+    normalized=True (default): CDF-normalized to [0,1] via RDKit2DNormalized (paper-faithful; MPNN3).
+    normalized=False: raw un-normalized RDKit2D values (MPNN4 feature-count control) — SAME 200
+    descriptors, no CDF, so values are unbounded and can be inf. Both variants replace NaN with 0.0;
+    the raw variant additionally clamps ±inf to the largest finite float (nan_to_num default) so the
+    rank-based QuantileTransformer downstream keeps their extreme ordering rather than erroring.
+    """
+    from descriptastorus.descriptors import rdNormalizedDescriptors, rdDescriptors
     import warnings
 
-    generator = rdNormalizedDescriptors.RDKit2DNormalized()
+    generator = rdNormalizedDescriptors.RDKit2DNormalized() if normalized else rdDescriptors.RDKit2D()
     features = []
     for smi in smiles_list:
         mol = Chem.MolFromSmiles(str(smi)) if pd.notna(smi) else None
@@ -162,9 +169,9 @@ def rdkit_2d_features(smiles_list):
         if result is None:
             raise ValueError(f"Descriptor computation failed for SMILES: {smi!r}")
         vals = np.array(result[1:], dtype=float)  # first element is success flag
-        if np.any(np.isnan(vals)):
-            n_nan = int(np.sum(np.isnan(vals)))
-            warnings.warn(f"{n_nan} NaN descriptor(s) for {smi!r}, replacing with 0.0")
-            vals = np.nan_to_num(vals, nan=0.0)
+        if not np.all(np.isfinite(vals)):
+            n_bad = int(np.sum(~np.isfinite(vals)))
+            warnings.warn(f"{n_bad} non-finite descriptor(s) for {smi!r}, replacing NaN->0.0 / inf->max-finite")
+            vals = np.nan_to_num(vals, nan=0.0)  # posinf/neginf default to largest finite float
         features.append(vals)
     return np.array(features)

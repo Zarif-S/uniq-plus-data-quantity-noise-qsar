@@ -42,6 +42,17 @@ Also update the `agentic-coding-framework` CLAUDE.md template to include: "⚠ V
 
 ---
 
+### Claude code-gen tics to watch for in review
+
+**Lesson**: Habits Claude defaults to that don't match this project's conventions or the user's own style — worth a quick eyeball pass, not automatic fixes.
+- Semicolon-chained statements (`ax.set_title(x); ax.set_xlabel(y)`, `plt.tight_layout(); plt.show()`) — CLAUDE.md bans this; one statement per line
+- Docstrings that grow past one line (rationale/caveats baked in) — CLAUDE.md wants one-line docstrings only
+- Comments restating what the code does instead of why
+- Defensive code (None-checks, try/except, fallback defaults) for cases that can't actually happen given call sites
+- Reaching for a class/​`**kwargs` flexibility where a plain function/fixed signature would do
+
+---
+
 ### Use Sørensen-Dice similarity, not Tanimoto, for this dataset
 
 **Lesson**: For the Fang et al. (2023) paper recreation, use `DataStructs.BulkDiceSimilarity` (Sørensen-Dice), not Tanimoto. The paper explicitly states Sørensen-Dice in the methods section, and the numbers confirm it: Tanimoto gives mean=0.167 ± 0.059; Sørensen-Dice gives mean=0.282 ± 0.083, matching the paper's reported 0.28 ± 0.08 exactly. Tanimoto is the RDKit default, making it an easy mistake to reach for.

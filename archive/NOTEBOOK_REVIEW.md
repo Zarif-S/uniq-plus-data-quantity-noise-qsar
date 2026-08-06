@@ -82,7 +82,7 @@ Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP
 - [x] §0 import `QuantileTransformer`; MPNN2 repointed in §4.2b/§4.3a/§4.3b (MPNN1/MPNN3 untouched)
 - [x] `mpnn.py` docstring + DECISIONS.md ADR + §4.2b residual-limitation note + migration cell
 - [x] Overnight run: migration ran, `MPNN2` (QT) + `MPNN2_robustscaler` both in checkpoint
-- [ ] **Deferred:** MPNN4 = QT-uniform on the 200 unnormalized rdkit_2d (clean feature-count control)
+- [done now i think ] **Deferred:** MPNN4 = QT-uniform on the 200 unnormalized rdkit_2d (clean feature-count control)
 
 ## Tuning scope (decided 2026-08-03, ran overnight) — ✅ DONE
 - [x] Tuned arm = **RF, LightGBM (hybrid) + MPNN3 only** (`TUNE_CLASSICAL=['RF','LightGBM']`,
@@ -111,7 +111,7 @@ Colour = METRIC (Dice=steelblue, Tanimoto=darkorange), style = FINGERPRINT (FCFP
       loaded in `01.6`). Verified counts: model endpoints −1 (standardisation), PPB +augmentation.
 
 ## OUTSTANDING
-1. **MPNN4 control** — QT-uniform on the 200 *unnormalized* rdkit_2d (vs MPNN2's 316 rmoldes = feature
+1. DONE - **MPNN4 control** — QT-uniform on the 200 *unnormalized* rdkit_2d (vs MPNN2's 316 rmoldes = feature
    count; vs MPNN3's CDF = normalization). Needs: unnormalized rdkit_2d featurizer, §3 compute, §4.1
    MPNN-only split+QT, §4.2b/§4.3a/§4.3b feature-source mapping, re-run. IN PROGRESS.
 2. **§4.4 scaffold split** — pre-existing TODO in `01.5`; user parking alongside data-quantity/noise work.

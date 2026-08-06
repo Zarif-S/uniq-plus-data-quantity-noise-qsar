@@ -127,3 +127,22 @@ def test_rdkit_2d_features_invalid_smiles_raises():
 def test_rdkit_2d_features_no_nans():
     X = rdkit_2d_features([ASPIRIN, ETHANOL])
     assert not np.any(np.isnan(X))
+
+
+def test_rdkit_2d_features_raw_shape():
+    # normalized=False (MPNN4 control) returns the same 200 descriptors, un-CDF'd
+    X = rdkit_2d_features([ETHANOL, ASPIRIN], normalized=False)
+    assert X.shape == (2, 200)
+
+
+def test_rdkit_2d_features_raw_finite():
+    # non-finite raw values are clamped so downstream QuantileTransformer never sees inf/NaN
+    X = rdkit_2d_features([ASPIRIN, ETHANOL], normalized=False)
+    assert np.all(np.isfinite(X))
+
+
+def test_rdkit_2d_features_raw_differs_from_normalized():
+    # raw and CDF-normalized must be genuinely different feature values (same descriptor set)
+    X_raw = rdkit_2d_features([ASPIRIN, ETHANOL], normalized=False)
+    X_norm = rdkit_2d_features([ASPIRIN, ETHANOL], normalized=True)
+    assert not np.allclose(X_raw, X_norm)
