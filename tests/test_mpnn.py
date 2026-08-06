@@ -89,7 +89,7 @@ def test_mpnn2_fit_predict_with_features_end_to_end():
 
 
 def test_mpnn3_fit_predict_with_features_generator_end_to_end():
-    # MPNN3: SMILES-only X, ChemProp generates rdkit_2d_normalized descriptors internally.
+    # MPNN2: SMILES-only X, ChemProp generates rdkit_2d_normalized descriptors internally.
     X, y = _xy(use_features=False)
     m = ChempropRegressor(features_generator="rdkit_2d_normalized", epochs=2, random_state=0)
     with warnings.catch_warnings():

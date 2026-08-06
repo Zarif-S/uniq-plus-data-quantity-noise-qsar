@@ -13,7 +13,7 @@
 
 ## Concept Specification
 
-**Purpose**: Tune LightGBM, RandomForest, and MPNN2 hyperparameters via RandomizedSearchCV, and provide utilities for saving/loading params. Used both for clean-data baseline tuning (Phase 3) and re-tuning under each experimental condition (Phases 4–6).
+**Purpose**: Tune LightGBM, RandomForest, and MPNN3 hyperparameters via RandomizedSearchCV, and provide utilities for saving/loading params. Used both for clean-data baseline tuning (Phase 3) and re-tuning under each experimental condition (Phases 4–6).
 
 ### State
 
@@ -40,7 +40,7 @@
 - After selecting best params, the model is refitted on the full `X_train + X_val` before returning (refit on all available training data)
 - Clean-data tuned parameters are serialised to `models/tuned_params/{endpoint}_{model}.json` as a reference
 - In the experiment loop (Phases 4–6), tuning is re-run per condition for the tuned arm; baseline arm uses default hyperparameters
-- MPNN2 is tuned via early stopping (fixed architecture, generous epochs), not grid search
+- MPNN3 is tuned via early stopping (fixed architecture, generous epochs), not grid search
 - The same `random_state=42` seed used throughout the project applies here
 - `make_model` raises `ValueError` for unknown model names
 
@@ -60,7 +60,7 @@ Phase 3: Clean-data baseline tuning
         ├──→ tune_rf(X_train_tune, y_train_tune, X_val, y_val)
         │         → save_params → models/tuned_params/{ep}_rf.json
         │
-        └──→ MPNN2: ChemProp early stopping
+        └──→ MPNN3: ChemProp early stopping
                   Fixed architecture, --epochs 50
 
 Phase 4–6: Experiment loop (per condition)
@@ -123,7 +123,7 @@ metrics = evaluate_model(model, X_test_clean, y_test_clean)
 
 **Location**: `src/tuning/tuning.py`
 
-### MPNN2: early stopping, not grid search
+### MPNN3: early stopping, not grid search
 
 **Issue**: ChemProp training takes ~10min per run. Grid search (8 combos × 6 endpoints) is prohibitive.
 

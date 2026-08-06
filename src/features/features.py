@@ -150,7 +150,7 @@ def rdmoldes(mols):
 def rdkit_2d_features(smiles_list, normalized=True):
     """Return (N, 200) RDKit 2D descriptor array via descriptastorus.
 
-    normalized=True (default): CDF-normalized to [0,1] via RDKit2DNormalized (paper-faithful; MPNN3).
+    normalized=True (default): CDF-normalized to [0,1] via RDKit2DNormalized (paper-faithful; MPNN2).
     normalized=False: raw un-normalized RDKit2D values (MPNN4 feature-count control) — SAME 200
     descriptors, no CDF, so values are unbounded and can be inf. Both variants replace NaN with 0.0;
     the raw variant additionally clamps ±inf to the largest finite float (nan_to_num default) so the

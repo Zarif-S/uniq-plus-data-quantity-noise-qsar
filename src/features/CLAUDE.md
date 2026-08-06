@@ -26,7 +26,7 @@ Stateless — all functions operate on inputs passed in and return new objects; 
 | `morgan_fingerprints` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → np.ndarray` | Returns (N, n_bits) int array of Morgan fingerprints. `use_features=True` (default) → FCFP4; `use_features=False` → ECFP4 (modelling representation for §5.3b, see DECISIONS.md) |
 | `fcfp4_bit_vectors` | `(smiles_list, radius=2, n_bits=1024, use_features=True) → list[ExplicitBitVect]` | Returns raw RDKit bit vectors for use with `DataStructs.BulkDiceSimilarity`/`BulkTanimotoSimilarity` — not a numpy array like `morgan_fingerprints`. Despite the name, `use_features=False` gives ECFP4 (comparison-only, see DECISIONS.md) — same RDKit call, only the invariant seeding differs |
 | `rdkit_descriptors` | `(smiles_list) → pd.DataFrame` | Returns DataFrame of 6 RDKit 2D descriptors (MW, LogP, TPSA, HBD, HBA, RotBonds) |
-| `rdkit_2d_features` | `(smiles_list, normalized=True) → np.ndarray` | Returns (N, 200) descriptastorus RDKit2D descriptors. `normalized=True` (default) → CDF-normalized to [0,1] (paper-faithful; MPNN3). `normalized=False` → raw un-normalized values, the **same 200** descriptors un-CDF'd (MPNN4 feature-count control, see DECISIONS.md) |
+| `rdkit_2d_features` | `(smiles_list, normalized=True) → np.ndarray` | Returns (N, 200) descriptastorus RDKit2D descriptors. `normalized=True` (default) → CDF-normalized to [0,1] (paper-faithful; MPNN2). `normalized=False` → raw un-normalized values, the **same 200** descriptors un-CDF'd (MPNN4 feature-count control, see DECISIONS.md) |
 
 ### Invariants
 

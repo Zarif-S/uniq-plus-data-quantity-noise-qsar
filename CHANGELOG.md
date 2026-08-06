@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.gitignore`: added models/, __marimo__/, test_notebooks_and_scripts/
 
 ### Changed (2026-07-20)
-- `notebooks/01_adme_eda_baseline.ipynb` §2.6: fix ValueError (duplicate ep_short/model rows); comparison table now iterates per feature set with MPNN2/MPNN as reference columns; moved to after §2.6b so mpnn_graph_df is defined first
+- `notebooks/01_adme_eda_baseline.ipynb` §2.6: fix ValueError (duplicate ep_short/model rows); comparison table now iterates per feature set with MPNN3/MPNN as reference columns; moved to after §2.6b so mpnn_graph_df is defined first
 - `notebooks/01_adme_eda_baseline.ipynb` §3.1/3.1b/3.3: switch tuning from ECFP4 → RDKit2D
 - `notebooks/01_adme_eda_baseline.ipynb` §3.1b: filter baseline-vs-tuned table to RDKit2D
 - `src/tuning/CLAUDE.md`: updated signatures to reflect X_val, y_val (PredefinedSplit, not cv=5)
@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `MeanPredictor` (DummyRegressor) added to `get_baseline_models()` — 6 models total; serves as trivial lower bound
 - `src/cleaning/cleaning.py`: `exclude_stereoisomer_pairs` — removes stereoisomer pairs with >3-fold difference on any log-scale endpoint (0 removed from ADME dataset — pre-cleaned by authors)
 - `notebooks/01_adme_eda_baseline.ipynb` §1.10a: stereoisomer exclusion analysis
-- `notebooks/01_adme_eda_baseline.ipynb` §2.5: MPNN2 (ChemProp graph + rdkit_2d_normalized descriptors)
+- `notebooks/01_adme_eda_baseline.ipynb` §2.5: MPNN3 (ChemProp graph + rdkit_2d_normalized descriptors)
 - `notebooks/01_adme_eda_baseline.ipynb` §2.7: similarity-binned MAE analysis (Fang et al. methodology — FCFP4, Dice, mean-of-top-5, 0.1-unit bins)
 - `notebooks/02_eda_baseline_pde10a.ipynb`: complete PDE10A EDA + baseline models across 7 split strategies
 - `tests/test_cleaning.py`: 5 additional tests for `exclude_stereoisomer_pairs` (11 total)

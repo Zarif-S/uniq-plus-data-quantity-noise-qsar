@@ -18,8 +18,8 @@
 ✅ ADME public dataset loaded (3521 compounds, 6 endpoints)
 ✅ EDA complete (ADME + PDE10A)
 ✅ Baseline ML models (MeanPredictor, Ridge, BayesianRidge, RF, XGBoost, LightGBM)
-✅ Hyperparameter tuning (LightGBM, RF on RDKit2D; MPNN2 early stopping)
-🔄 Deep learning models (MPNN2 trained; graph-only MPNN in progress)
+✅ Hyperparameter tuning (LightGBM, RF on RDKit2D; MPNN3 early stopping)
+🔄 Deep learning models (MPNN3 trained; graph-only MPNN in progress)
 ⏳ Data quantity experiments (learning curves)
 ⏳ Label noise experiments
 
@@ -46,7 +46,7 @@
 │ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md  │
 │ Models module (baselines, evaluation)  → src/models/CLAUDE.md    │
 │ Splitting module (PDE10A 7 strategies) → src/splitting/CLAUDE.md │
-│ Tuning module (LightGBM, MPNN2)        → src/tuning/CLAUDE.md    │
+│ Tuning module (LightGBM, MPNN3)        → src/tuning/CLAUDE.md    │
 │ Noise module (label injection)         → src/noise/CLAUDE.md     │
 ├────────────────────────────────────────────────────────────────┤
 │ All logged decisions (ADR)       → DECISIONS.md               │

@@ -146,7 +146,7 @@ def get_paper_models(random_state=42):
     hyperparameters. BayesianRidge is deterministic (no random_state) and, like SVM/Lasso, expects
     scaled features — callers must feed it the RobustScaler'd matrices.
 
-    FCNN (DeepChem MultitaskRegressor) also expects scaled features. MPNN1/MPNN2 are graph models
+    FCNN (DeepChem MultitaskRegressor) also expects scaled features. MPNN1/MPNN3 are graph models
     (SMILES in, no X matrix) and are handled separately in the notebook loop, not here.
     """
     return {
