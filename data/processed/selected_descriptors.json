@@ -1,0 +1,229 @@
+{
+  "selected_descriptors": [
+    "CalcTPSA",
+    "CalcEccentricity",
+    "CalcPMI3",
+    "PEOE_VSA",
+    "SlogP_VSA"
+  ],
+  "selected_features": [
+    0,
+    32,
+    38,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
+    54,
+    55,
+    56,
+    57,
+    68,
+    69,
+    70,
+    71,
+    72,
+    73,
+    74,
+    75,
+    76,
+    77,
+    78,
+    79
+  ],
+  "cv_score_mean": 0.35553603801321865,
+  "cv_score_by_endpoint": {
+    "HLM": 0.3518418025808273,
+    "MDR1": 0.4641015205208735,
+    "SOL": 0.24299149066493908,
+    "RLM": 0.3632093382862346
+  },
+  "baseline_cv_score_mean": 0.41932890061130307,
+  "post_cca_correlation_prune_cv_score_mean": 0.405669333262216,
+  "post_vif_prune_cv_score_mean": 0.38243397587932665,
+  "dropped_constant": [
+    "CalcPBF",
+    "CalcSpherocityIndex"
+  ],
+  "dropped_correlation": [
+    {
+      "dropped": "CalcNPR2",
+      "kept_instead": "CalcNPR1",
+      "canonical_corr": 1.0
+    },
+    {
+      "dropped": "CalcPMI2",
+      "kept_instead": "CalcPMI3",
+      "canonical_corr": 0.9950032262772384
+    },
+    {
+      "dropped": "CalcLabuteASA",
+      "kept_instead": "CrippenDescriptors",
+      "canonical_corr": 0.9885446530209698
+    },
+    {
+      "dropped": "CalcChi4n",
+      "kept_instead": "CalcChi3n",
+      "canonical_corr": 0.9856949379870736
+    },
+    {
+      "dropped": "CalcChi0v",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.9840921963246932
+    },
+    {
+      "dropped": "CalcChi4v",
+      "kept_instead": "CalcChi3v",
+      "canonical_corr": 0.9834065055296377
+    },
+    {
+      "dropped": "CalcNPR1",
+      "kept_instead": "CalcAsphericity",
+      "canonical_corr": 0.9820121011760451
+    },
+    {
+      "dropped": "CalcChi1n",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.9800437347451603
+    },
+    {
+      "dropped": "CrippenDescriptors",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.977478678265747
+    },
+    {
+      "dropped": "CalcNumRings",
+      "kept_instead": "MQNs",
+      "canonical_corr": 0.9692178673058799
+    },
+    {
+      "dropped": "CalcChi2v",
+      "kept_instead": "CalcChi1v",
+      "canonical_corr": 0.9653216980871429
+    },
+    {
+      "dropped": "CalcChi3n",
+      "kept_instead": "CalcChi2n",
+      "canonical_corr": 0.9640069194316502
+    },
+    {
+      "dropped": "CalcKappa1",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.9618290657266119
+    },
+    {
+      "dropped": "CalcChi2n",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.9482272086485926
+    },
+    {
+      "dropped": "CalcChi1v",
+      "kept_instead": "CalcChi0n",
+      "canonical_corr": 0.9458335909921963
+    },
+    {
+      "dropped": "CalcExactMolWt",
+      "kept_instead": "AUTOCORR2D",
+      "canonical_corr": 0.9454026375508751
+    },
+    {
+      "dropped": "SMR_VSA",
+      "kept_instead": "CalcFractionCSP3",
+      "canonical_corr": 0.9440497776489347
+    },
+    {
+      "dropped": "CalcChi0n",
+      "kept_instead": "MQNs",
+      "canonical_corr": 0.9373207448999558
+    },
+    {
+      "dropped": "AUTOCORR2D",
+      "kept_instead": "MQNs",
+      "canonical_corr": 0.9248282939414294
+    },
+    {
+      "dropped": "CalcKappa2",
+      "kept_instead": "MQNs",
+      "canonical_corr": 0.9136291011608765
+    },
+    {
+      "dropped": "CalcNumAliphaticCarbocycles",
+      "kept_instead": "CalcNumSaturatedCarbocycles",
+      "canonical_corr": 0.912538613424002
+    }
+  ],
+  "dropped_vif": [
+    {
+      "dropped": "CalcNumAromaticHeterocycles",
+      "vif": Infinity,
+      "mi": 0.008575446379864182,
+      "remaining": 26
+    },
+    {
+      "dropped": "CalcNumSaturatedCarbocycles",
+      "vif": Infinity,
+      "mi": 0.014021375583852524,
+      "remaining": 25
+    },
+    {
+      "dropped": "CalcAsphericity",
+      "vif": 31.90561017885959,
+      "mi": 0.0353131559906954,
+      "remaining": 24
+    },
+    {
+      "dropped": "MQNs",
+      "vif": 28.655668973371757,
+      "mi": 0.2101333986667946,
+      "remaining": 23
+    },
+    {
+      "dropped": "CalcNumAliphaticRings",
+      "vif": 21.431284206315407,
+      "mi": 0.04074513768494725,
+      "remaining": 22
+    },
+    {
+      "dropped": "CalcNumLipinskiHBA",
+      "vif": 20.264439285138447,
+      "mi": 0.18908226946404572,
+      "remaining": 21
+    },
+    {
+      "dropped": "CalcHallKierAlpha",
+      "vif": 9.202361679788847,
+      "mi": 0.07703737354734308,
+      "remaining": 20
+    },
+    {
+      "dropped": "CalcRadiusOfGyration",
+      "vif": 8.246468448930482,
+      "mi": 0.09281907597653127,
+      "remaining": 19
+    },
+    {
+      "dropped": "CalcNumSaturatedHeterocycles",
+      "vif": 6.207406115555814,
+      "mi": 0.03875082607919467,
+      "remaining": 18
+    },
+    {
+      "dropped": "CalcFractionCSP3",
+      "vif": 5.886756576181907,
+      "mi": 0.09425193031109735,
+      "remaining": 17
+    },
+    {
+      "dropped": "CalcKappa3",
+      "vif": 4.819283219115885,
+      "mi": 0.06567527795306827,
+      "remaining": 16
+    }
+  ]
+}

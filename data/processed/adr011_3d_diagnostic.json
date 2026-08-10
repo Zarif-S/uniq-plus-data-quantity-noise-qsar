@@ -1,0 +1,106 @@
+{
+  "n_unique_molecules": 3509,
+  "n_embedding_failures": 0,
+  "descriptors_spliced": [
+    "CalcNPR1",
+    "CalcNPR2",
+    "CalcPMI1",
+    "CalcPMI2",
+    "CalcPMI3",
+    "CalcAsphericity",
+    "CalcEccentricity",
+    "CalcRadiusOfGyration",
+    "CalcInertialShapeFactor"
+  ],
+  "selection_5desc": {
+    "descriptors": [
+      "CalcTPSA",
+      "CalcEccentricity",
+      "CalcPMI3",
+      "PEOE_VSA",
+      "SlogP_VSA"
+    ],
+    "flat_cv_score_mean": 0.35553603801321865,
+    "flat_cv_score_by_endpoint": {
+      "HLM": 0.3518418025808273,
+      "MDR1": 0.4641015205208735,
+      "SOL": 0.24299149066493908,
+      "RLM": 0.3632093382862346
+    },
+    "real_conformer_cv_score_mean": 0.3638327491712716,
+    "real_conformer_cv_score_by_endpoint": {
+      "HLM": 0.36298735313567254,
+      "MDR1": 0.457147988377068,
+      "SOL": 0.2680611411724419,
+      "RLM": 0.3671345139999041
+    },
+    "delta": 0.008296711158052972
+  },
+  "baseline_48desc": {
+    "descriptors": [
+      "CalcTPSA",
+      "CalcFractionCSP3",
+      "CalcNumAliphaticCarbocycles",
+      "CalcNumAliphaticHeterocycles",
+      "CalcNumAliphaticRings",
+      "CalcNumAmideBonds",
+      "CalcNumAromaticCarbocycles",
+      "CalcNumAromaticHeterocycles",
+      "CalcNumAromaticRings",
+      "CalcNumLipinskiHBA",
+      "CalcNumLipinskiHBD",
+      "CalcNumHeteroatoms",
+      "CalcNumRings",
+      "CalcNumRotatableBonds",
+      "CalcNumSaturatedCarbocycles",
+      "CalcNumSaturatedHeterocycles",
+      "CalcNumSaturatedRings",
+      "CalcHallKierAlpha",
+      "CalcKappa1",
+      "CalcKappa2",
+      "CalcKappa3",
+      "CalcChi0n",
+      "CalcChi0v",
+      "CalcChi1n",
+      "CalcChi1v",
+      "CalcChi2n",
+      "CalcChi2v",
+      "CalcChi3n",
+      "CalcChi3v",
+      "CalcChi4n",
+      "CalcChi4v",
+      "CalcAsphericity",
+      "CalcEccentricity",
+      "CalcInertialShapeFactor",
+      "CalcExactMolWt",
+      "CalcPMI1",
+      "CalcPMI2",
+      "CalcPMI3",
+      "CalcRadiusOfGyration",
+      "CalcLabuteASA",
+      "CalcNPR1",
+      "CalcNPR2",
+      "PEOE_VSA",
+      "SMR_VSA",
+      "SlogP_VSA",
+      "MQNs",
+      "CrippenDescriptors",
+      "AUTOCORR2D"
+    ],
+    "flat_cv_score_mean": 0.41932890061130307,
+    "flat_cv_score_by_endpoint": {
+      "HLM": 0.4287652285707944,
+      "MDR1": 0.5136445561850852,
+      "SOL": 0.2732221240686551,
+      "RLM": 0.46168369362067735
+    },
+    "real_conformer_cv_score_mean": 0.43246358095555204,
+    "real_conformer_cv_score_by_endpoint": {
+      "HLM": 0.4306467518900402,
+      "MDR1": 0.5130477305229671,
+      "SOL": 0.3128836301586721,
+      "RLM": 0.4732762112505286
+    },
+    "delta": 0.013134680344248972
+  }
+}

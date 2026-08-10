@@ -45,4 +45,5 @@ descriptastorus = { git = "https://github.com/bp-kelley/descriptastorus" }
 dev = [
     "ipykernel>=7.3.0",
     "pytest>=9.1.1",
+    "ruff>=0.16.2",
 ]

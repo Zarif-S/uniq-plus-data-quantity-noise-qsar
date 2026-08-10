@@ -35,7 +35,7 @@ def test_evaluate_model_keys():
     from sklearn.linear_model import LinearRegression
     model = LinearRegression().fit(X, y)
     result = evaluate_model(model, X, y)
-    assert set(result.keys()) == {"R2", "RMSE", "MSE", "MAE", "Spearman", "CCC"}
+    assert set(result.keys()) == {"R2", "RMSE", "MSE", "MAE", "Pearson", "Spearman", "CCC"}
 
 
 def test_evaluate_model_perfect_predictions():
@@ -48,6 +48,7 @@ def test_evaluate_model_perfect_predictions():
     assert result["RMSE"] < 1e-9
     assert result["MSE"] < 1e-9
     assert result["MAE"] < 1e-9
+    assert abs(result["Pearson"] - 1.0) < 1e-9
     assert abs(result["Spearman"] - 1.0) < 1e-9
     assert abs(result["CCC"] - 1.0) < 1e-9
 
@@ -60,6 +61,7 @@ def test_evaluate_model_metric_ranges():
     model = LinearRegression().fit(X, y)
     result = evaluate_model(model, X, y)
     assert result["MAE"] >= 0
+    assert -1.0 <= result["Pearson"] <= 1.0
     assert -1.0 <= result["Spearman"] <= 1.0
     assert -1.0 <= result["CCC"] <= 1.0
 
@@ -69,6 +71,7 @@ def test_evaluate_model_accepts_none_model_with_y_pred():
     y_pred = np.array([1.1, 1.9, 3.1, 3.9])
     result = evaluate_model(None, None, y, y_pred=y_pred)
     assert result["MAE"] >= 0
+    assert -1.0 <= result["Pearson"] <= 1.0
     assert -1.0 <= result["Spearman"] <= 1.0
     assert -1.0 <= result["CCC"] <= 1.0
 
@@ -87,7 +90,7 @@ def test_evaluate_model_accepts_precomputed_y_pred():
     y_pred = model.predict(X)
     result_precomputed = evaluate_model(model, X, y, y_pred=y_pred)
     result_default = evaluate_model(model, X, y)
-    for key in ("R2", "RMSE", "MAE", "Spearman", "CCC"):
+    for key in ("R2", "RMSE", "MAE", "Pearson", "Spearman", "CCC"):
         assert abs(result_precomputed[key] - result_default[key]) < 1e-9
 
 

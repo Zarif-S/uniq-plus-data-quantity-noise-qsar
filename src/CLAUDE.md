@@ -17,6 +17,7 @@ Reusable Python modules imported by notebooks. Each module is a subpackage with 
 | `tuning` | Hyperparameter tuning (LightGBM, RF) + frozen param management | [tuning/CLAUDE.md](tuning/CLAUDE.md) |
 | `noise` | Label noise injection (Gaussian, systematic bias, gross errors) | [noise/CLAUDE.md](noise/CLAUDE.md) |
 | `mmp` | Matched Molecular Pair rule database (mmpdb CLI wrapper) | [mmp/CLAUDE.md](mmp/CLAUDE.md) |
+| `feature_selection` | rdmoldes 50-descriptor selection (MI, CCA correlation-prune, VIF, LightGBM RFE) | [feature_selection/CLAUDE.md](feature_selection/CLAUDE.md) |
 
 ---
 
@@ -49,6 +50,7 @@ Entry points per submodule:
 | `tuning` | `tune_lightgbm`, `tune_rf`, `make_model`, `save_params`, `load_params` |
 | `noise` | `add_gaussian_noise`, `add_systematic_bias`, `add_gross_errors` |
 | `mmp` | `write_smi_file`, `write_properties_file`, `run_fragment`, `run_index`, `significant_rules` |
+| `feature_selection` | `drop_constant_descriptors`, `correlation_prune`, `vif_prune`, `run_descriptor_rfe`, `evaluate_descriptor_set` |
 
 ### Invariants
 
@@ -99,4 +101,4 @@ raw data
 
 ---
 
-**Last Updated**: 2026-07-20
+**Last Updated**: 2026-08-10

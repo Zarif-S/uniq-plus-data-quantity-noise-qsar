@@ -1,0 +1,6 @@
+stage,n_descriptors,mean_cv_r2,delta_from_previous_stage
+Post constant-filter (start),48,0.41932890061130307,
+Post correlation-prune (CCA),27,0.405669333262216,-0.013659567349087076
+Post VIF-prune,16,0.38243397587932665,-0.023235357382889343
+Post LightGBM RFE (final cutoff),5,0.35553603801321865,-0.026897937866108
+"(for reference) real-conformer splice, final selection",5,0.3638327491712716,0.008296711158052972

@@ -4,7 +4,7 @@ import warnings
 
 import numpy as np
 from lightgbm import LGBMRegressor
-from scipy.stats import ConstantInputWarning, spearmanr
+from scipy.stats import ConstantInputWarning, pearsonr, spearmanr
 from sklearn.dummy import DummyRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import BayesianRidge, Ridge
@@ -36,7 +36,7 @@ def get_baseline_models():
 
 
 def evaluate_model(model, X_test, y_test, y_pred=None):
-    """Return {R2, RMSE, MSE, MAE, Spearman, CCC} for a fitted model evaluated on test data.
+    """Return {R2, RMSE, MSE, MAE, Pearson, Spearman, CCC} for a fitted model evaluated on test data.
 
     Pass y_pred to reuse already-computed predictions and skip a redundant predict call.
     When y_pred is supplied, model and X_test may be None.
@@ -49,6 +49,7 @@ def evaluate_model(model, X_test, y_test, y_pred=None):
     mse = mean_squared_error(y_test, y_pred)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", ConstantInputWarning)
+        r, _ = pearsonr(y_test, y_pred)
         rho, _ = spearmanr(y_test, y_pred)
     mean_t, mean_p = np.mean(y_test), np.mean(y_pred)
     std_t, std_p = np.std(y_test), np.std(y_pred)
@@ -59,6 +60,7 @@ def evaluate_model(model, X_test, y_test, y_pred=None):
         "RMSE":     float(np.sqrt(mse)),
         "MSE":      float(mse),
         "MAE":      float(mean_absolute_error(y_test, y_pred)),
+        "Pearson":  float(r),
         "Spearman": float(rho),
         "CCC":      float(ccc),
     }
