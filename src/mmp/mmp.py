@@ -8,6 +8,18 @@ import pandas as pd
 # mmpdb's own built-in defaults, pinned explicitly so a future mmpdb version can't silently
 # change what we run. These are also the exact values Fang et al. (2023) describe using -- the
 # paper's fragmentation/indexing section is describing mmpdb's defaults, not a custom rule set.
+#
+# Two known deviations from the paper (root cause: mmpdb>=3.x needs rdkit>=2024.3, conflicting
+# with this project's rdkit==2023.9.5 pin used project-wide -- `uv add "mmpdb==3.1.4"` fails
+# outright, confirmed directly -- so this project has mmpdb==2.1, the newest compatible version):
+# 1. The paper used mmpdb 2.2-dev1 (pre-release, never on PyPI); fragmentation/indexing behavior
+#    across that version gap is not verified identical.
+# 2. The paper additionally states "minimum heavy atoms per each constant fragment as 0". mmpdb
+#    2.1's `fragment` CLI has no corresponding flag. However: 0 is a null constraint (no minimum
+#    = no filtering), so this is functionally equivalent to leaving the parameter unset, which is
+#    exactly what 2.1 already does by omission -- confirmed via mmpdb 3.1.4 (which does have the
+#    flag, `--min-heavies-per-const-frag`) that setting it to 0 changes nothing. Not chasing an
+#    mmpdb version upgrade for this: it would be a no-op fix for a no-op gap.
 MMPDB_CUT_SMARTS = "[#6+0;!$(*=,#[!#6])]!@!=!#[!#0;!#1;!$([CH2]);!$([CH3][CH2])]"
 MMPDB_ROTATABLE_SMARTS = "[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1&!$(*#*)]"
 MMPDB_NUM_CUTS = 3
@@ -34,7 +46,10 @@ def write_properties_file(df, id_col, property_cols, path):
 
 
 def run_fragment(smi_path, fragments_path, num_jobs=4):
-    """Run `mmpdb fragment` on `smi_path`, with parameters pinned to mmpdb's defaults (== Fang et al. 2023)."""
+    """Run `mmpdb fragment` on `smi_path`, with chemistry parameters pinned to mmpdb's defaults (== Fang et al. 2023).
+
+    `num_jobs` is parallelism only, not a paper-stated parameter -- it does not affect results.
+    """
     subprocess.run(
         [
             "mmpdb", "fragment", str(smi_path),

@@ -34,9 +34,16 @@ Anchor: **`src/mmp/mmp.py`**, constants block (lines ~8–16). Compare each agai
 - [ ] `MMPDB_ROTATABLE_SMARTS` = `[!$([NH]!@C(=O))&!D1&!$(*#*)]-&!@[!$([NH]!@C(=O))&!D1&!$(*#*)]`
 - [ ] `MMPDB_NUM_CUTS` = 3 · `MMPDB_MAX_HEAVIES` = 100 · `MMPDB_MAX_ROTATABLE_BONDS` = 10
 - [ ] `MMPDB_MAX_VARIABLE_HEAVIES` = 10 (indexing phase)
-- [ ] Known gap: the paper's "minimum heavy atoms per constant fragment = 0" has no CLI flag in
-      our mmpdb **2.1** (paper used **2.2-dev1**). Confirm you're comfortable this is a no-op
-      default and not a silent divergence. (Version mismatch is itself worth noting in writeup.)
+- [ ] Known gap, back on plain mmpdb==2.1 in the project venv (no uvx/network dependency): mmpdb
+      2.1's `fragment` CLI has no flag at all for the paper's "min heavy atoms per constant
+      fragment = 0". Investigated switching to mmpdb 3.1.4 (which does have
+      `--min-heavies-per-const-frag`) via `uvx` to close this, and confirmed setting it to 0
+      produces byte-identical downstream rule statistics to 2.1's unset behavior — 0 is a null
+      constraint, so this is a documentation gap, not a results gap. Reverted the uvx/3.1.4 switch
+      as unnecessary complexity for a no-op fix; noted as-is in the notebook title cell and
+      `src/mmp/mmp.py`/`CLAUDE.md` instead. mmpdb version gap (paper's 2.2-dev1 vs our 2.1) remains
+      open and unverified, same root cause: mmpdb>=3.x needs rdkit>=2024.3, conflicting with this
+      project's rdkit==2023.9.5 pin (`uv add "mmpdb==3.1.4"` fails outright, confirmed directly).
 
 ### 3. Significance filter logic
 Anchor: **`src/mmp/mmp.py`**, `significant_rules()`. Drives the §5 counts.

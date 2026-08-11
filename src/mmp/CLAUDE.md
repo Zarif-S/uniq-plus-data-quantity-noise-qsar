@@ -37,6 +37,13 @@
 
 `max_radius=3` in `significant_rules` is **not** an mmpdb indexing flag — mmpdb always computes environment statistics at radius 0–5 during indexing (`rule_environment_statistics` has one row per rule per radius). Fang et al.'s "max radius 3" is a query-time choice about which of those rows to treat as the representative one per rule; `significant_rules` reimplements that selection (most specific radius ≤ 3 that clears the pair-count/p-value bar) directly in SQL.
 
+### Known deviations from the paper (unresolved, not silently worked around)
+
+Root cause: this project pins `rdkit==2023.9.5` project-wide (every other notebook depends on it for reproducibility), and `mmpdb>=3.x` requires `rdkit>=2024.3` — confirmed directly, `uv add "mmpdb==3.1.4"` fails outright on that conflict. `uv add mmpdb` therefore resolves to the newest compatible version, 2.1.
+
+- **mmpdb version**: the paper used mmpdb 2.2-dev1 (never published to PyPI — pre-release, git-only); this project has `mmpdb==2.1`. Fragmentation/indexing behavior across that version gap has not been verified identical.
+- **"Minimum heavy atoms per constant fragment = 0"**: the paper's appendix states this as a fragmentation-phase parameter. mmpdb 2.1's `fragment` CLI has no corresponding flag. However, 0 is a null constraint — "no minimum" is the same as not filtering at all, which is exactly what mmpdb 2.1 already does by omitting the flag. Confirmed via mmpdb 3.1.4 (which does have `--min-heavies-per-const-frag`, checked via `uvx --from mmpdb==3.1.4 mmpdb fragment --help`) that setting it to 0 produces byte-identical downstream rule statistics to 2.1's unset behavior. So this is a documentation gap, not a results gap — not worth an mmpdb version upgrade (which would also mean running mmpdb outside this project's venv, since 3.x conflicts with the rdkit pin above) to close a parameter that's already a no-op.
+
 ### Invariants
 
 - Inputs are never mutated — all functions read a DataFrame and write to disk paths
