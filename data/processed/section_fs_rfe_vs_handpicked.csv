@@ -1,0 +1,4 @@
+n_descriptors,rfe_own_set,rfe_own_r2,handpicked_set (top-N by standalone R^2),handpicked_r2,delta
+4,"['CalcTPSA', 'CalcEccentricity', 'CalcPMI3', 'PEOE_VSA']",0.27955372059524075,"['PEOE_VSA', 'SlogP_VSA', 'CalcTPSA', 'CalcPMI3']",0.35241016349036125,0.0728564428951205
+3,"['CalcTPSA', 'CalcEccentricity', 'PEOE_VSA']",0.2825305951444582,"['PEOE_VSA', 'SlogP_VSA', 'CalcTPSA']",0.3545490238017651,0.0720184286573069
+2,"['CalcTPSA', 'PEOE_VSA']",0.2882347768484881,"['PEOE_VSA', 'SlogP_VSA']",0.34582368864495283,0.05758891179646475
