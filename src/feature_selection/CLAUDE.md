@@ -56,7 +56,7 @@ state is held.
 - The current `selected_descriptors.json` selection is global across all 4 endpoints, not
   per-endpoint — only revisit with a per-endpoint re-selection if one endpoint's downstream model
   performance is significantly worse than the others (SOL is already the weakest at the current
-  5-descriptor cutoff, R²=0.245 — the natural first candidate to check)
+  5-descriptor cutoff, R²=0.272 — the natural first candidate to check)
 - No function mutates its inputs; all are pure given the same arguments
 
 ---
@@ -185,13 +185,39 @@ justification — the trace never searched far enough to find a real elbow, and 
 noisy to distinguish signal from noise in the step-to-step deltas.
 
 **Solution**: `run_descriptor_rfe` always returns a full trace down to `min_descriptors`; the
-notebook explicitly searches down to 3 with `cv=5` and inspects the plotted trace by eye. On the
-current data this reveals a real elbow at 5→4 descriptors (a −0.076 R² drop, roughly 5x any other
-single-step change in the trace) — 5 descriptors is the selected cutoff. This is a design choice
-worth re-validating if the upstream featurization or descriptor pool ever changes: the function
-itself makes no assumption about where the elbow will be.
+notebook explicitly searches down to 1 with `cv=5` and inspects the plotted trace by eye. On the
+current data this reveals a first real elbow at 5→4 descriptors (a −0.061 R² drop, roughly 8x any
+other single-step change in the 16→5 range) — 5 descriptors is the selected cutoff — and a second,
+much larger cliff further down at 3→2 (−0.221). This is a design choice worth re-validating if the
+upstream featurization or descriptor pool ever changes: the function itself makes no assumption
+about where the elbow will be.
 
 **Location**: `notebooks/01.8_feature_selection.ipynb` §5–6
+
+### `run_descriptor_rfe` was eliminating on split-count, not gain-importance
+
+**Issue**: Every comment/docstring around `run_descriptor_rfe` and the §8 diagnostic described
+gain-based importance ("how much a descriptor's splits reduced loss"), but `LGBMRegressor` was
+constructed without `importance_type='gain'` — `feature_importances_` therefore returned
+scikit-learn's *default*, which for LightGBM is `split`-count (how many times a descriptor was
+used to split, regardless of how much each split actually helped). Code and documentation
+disagreed about what the elimination step was actually optimizing.
+
+**Found via**: §8's own shadowing diagnostic — `CalcEccentricity` had exactly zero importance in
+the full 316-feature model despite being nearly rank-identical (Spearman ρ=1.0) to `CalcNPR2`,
+which had real nonzero importance. That's consistent with split-count (a feature never used to
+split gets exactly 0, gain or no gain) but was being narrated as a gain-importance finding.
+
+**Fixed**: `importance_type='gain'` set explicitly in `run_descriptor_rfe`'s and the §8
+RF/LightGBM-comparison cell's `LGBMRegressor` construction. Re-running the full pipeline changed
+the final 5-descriptor selection: `CalcEccentricity`/`CalcPMI3` (both ADR-011 flat-2D-geometry
+descriptors) are no longer selected, replaced by `CalcNumAromaticCarbocycles`/`CalcChi3v`. Even on
+genuine gain-importance, RFE's own elimination order in the N≤5 tail is still not reliable — see
+`notebooks/01.8_feature_selection.ipynb` §9 for why (gain-importance is a marginal measure, which
+misprices descriptors that are individually strong but partially correlated with each other).
+
+**Location**: `src/feature_selection/feature_selection.py::run_descriptor_rfe`,
+`notebooks/01.8_feature_selection.ipynb` §5, §8, §9
 
 ---
 
@@ -202,9 +228,10 @@ itself makes no assumption about where the elbow will be.
   `CalcRadiusOfGyration`, `CalcInertialShapeFactor`) are computed on flat 2D coordinates, not real
   3D conformers — inherited from the paper's own methodology, not a bug in this module. Two of
   them (`CalcPBF`, `CalcSpherocityIndex`) are consequently fully degenerate and get dropped by
-  `drop_constant_descriptors` on data alone; two others (`CalcEccentricity`, `CalcPMI3`) survive
-  all the way to the final 5-descriptor selection. See ADR-011 for the corrected impact
-  assessment and the real-conformer diagnostic result (`notebooks/01.8_feature_selection.ipynb`
+  `drop_constant_descriptors` on data alone. Two others (`CalcEccentricity`, `CalcPMI3`) survived
+  to the final 5-descriptor selection under a buggy RFE run (see the split-vs-gain-importance note
+  above); after that fix, none of the 9 affected descriptors are in the current selection. See
+  ADR-011's *Second correction* and the real-conformer diagnostic result (`notebooks/01.8_feature_selection.ipynb`
   §7, `data/processed/adr011_3d_diagnostic.json`).
 
 ---

@@ -232,7 +232,7 @@ Secondary reasons:
 
 ## ADR-005 — Label Noise Model Definitions
 
-**Date**: 2026-07-21
+**Date**: 2026-07-21 (levels amended 2026-08-11)
 **Status**: Decided
 **Decider**: Zarif
 
@@ -240,9 +240,11 @@ Secondary reasons:
 
 ### Context
 
-Three types of label noise are injected into `y_train` for Phase 5 and Phase 5b experiments, following the taxonomy of Landrum & Riniker. Each noise type models a distinct real-world assay imperfection. The exact formulations need to be pinned to avoid ambiguity in the writeup.
+Three types of label noise are injected into `y_train` for the noise-injection experiments (`04_adme_noise.ipynb`), following the taxonomy of Landrum & Riniker. Each noise type models a distinct real-world assay imperfection. The exact formulations need to be pinned to avoid ambiguity in the writeup.
 
 All noise levels are expressed as fractions of `std(y)` for the endpoint being corrupted, making them scale-invariant across HLM, MDR1, SOL, and RLM.
+
+**Levels are coarse-scan anchors, not final reported values** (amended 2026-08-11). `sigma_frac`/`bias_frac` = 1.0 corrupts a label with noise equal to the full spread of the endpoint — the `NoiseEstimator` ceiling (R² = 1 − σ²/Var(y), see `src/noise/CLAUDE.md`) is ≈0 at that point, i.e. signal is gone by construction. Rather than pre-selecting a "realistic" range, the levels below are used as a coarse scan (mirrors `03_adme_data_quantity.ipynb`'s fraction methodology): run the full grid at low seed count, use a fixed-threshold pass to locate each `(endpoint, model, noise_type)` curve's collapse point empirically, then zoom in below the knee with a finer grid and more seeds for the reported curves. The extreme level (1.0 for Gaussian/bias) is kept as a sanity-check anchor confirming the curve reaches the theoretical ceiling, not as a claimed-realistic operating point.
 
 ---
 
@@ -623,9 +625,33 @@ are unaffected.
 
 ## ADR-011 — `rdmoldes()` 3D Descriptors Are Computed on Flat (2D) Coordinates
 
-**Date**: 2026-08-10 (corrected 2026-08-10 — see *Correction* below)
+**Date**: 2026-08-10 (corrected 2026-08-10 — see *Correction* below; superseded 2026-08-11 — see *Second correction* below)
 **Status**: Known limitation, not fixed
 **Decider**: Zarif
+
+---
+
+### Second correction (2026-08-11) — the "40% of the selection" premise no longer holds
+
+`01.8`'s RFE (§5) had a real bug: it eliminated descriptors on LightGBM's *default*
+`feature_importances_` (`split`-count), not the `gain`-based importance every comment in
+that notebook described. Fixed (`importance_type='gain'` set explicitly in
+`run_descriptor_rfe`) and the pipeline re-run top-to-bottom. The final 5-descriptor
+selection changed as a direct result: `CalcEccentricity` and `CalcPMI3` — the two
+flat-geometry descriptors this ADR's first correction was about — are **no longer in the
+final selection**. They're replaced by `CalcNumAromaticCarbocycles` and `CalcChi3v`,
+neither of which is one of the 9 ADR-011-affected descriptors. Current selection:
+`CalcTPSA`, `CalcNumAromaticCarbocycles`, `CalcChi3v`, `PEOE_VSA`, `SlogP_VSA`
+(`data/processed/selected_descriptors.json`, `notebooks/01.8_feature_selection.ipynb` §9).
+
+This doesn't retroactively make the *original* "limited impact" claim correct — the
+flat-geometry finding itself, and the fact that a buggy RFE run genuinely did select 2
+flat-geometry descriptors, both happened and are real. It means the "Consequence" section
+below, which was written for the pre-fix selection, is now stale for the specific claim
+that `X_rdkit`/`X_hybrid` in `01.5` are exposed to this *via the current `01.8`
+selection* — they aren't, currently. The Step 1 diagnostic result (real-conformer splice
+on the 48/50-descriptor baseline pool) is unaffected by this and still stands as reported.
+See `notebooks/01.8_feature_selection.ipynb` §7 for the up-to-date framing.
 
 ---
 

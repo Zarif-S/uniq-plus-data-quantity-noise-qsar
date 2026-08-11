@@ -312,11 +312,15 @@ def test_run_descriptor_rfe_eliminates_down_to_min_descriptors():
         assert set(cur["descriptors"]) == set(prev["descriptors"]) - {cur["dropped"]}
 
 
-def test_run_descriptor_rfe_dropping_the_informative_descriptor_causes_the_largest_score_drop():
-    # Mirrors the real elbow-detection logic (see notebooks/01.8_feature_selection.ipynb §6): a
-    # descriptor's gain-based importance at one step doesn't always track its true
-    # value, so the *trace's* biggest single-step R² drop is what actually reveals
-    # which descriptor mattered -- not the elimination order alone.
+def test_run_descriptor_rfe_protects_the_only_informative_descriptor():
+    # Regression test for a real bug: run_descriptor_rfe used to eliminate on
+    # LGBMRegressor's *default* feature_importances_ (split-count), not the gain-based
+    # importance its own docstring described. Under split-count, a single strongly
+    # informative descriptor could still get dropped mid-trace (noise descriptors racking
+    # up split counts deep in the trees), only for its removal to show up as the trace's
+    # biggest score drop. With importance_type='gain' (the fix), the informative
+    # descriptor should never be judged least-important, and should survive every
+    # elimination step -- see src/feature_selection/CLAUDE.md's split-vs-gain note.
     rng = np.random.RandomState(0)
     n = 100
     X = rng.normal(size=(n, 6))
@@ -329,12 +333,6 @@ def test_run_descriptor_rfe_dropping_the_informative_descriptor_causes_the_large
         X_by_endpoint, y_by_endpoint, descriptor_map, min_descriptors=1, cv=3,
     )
 
-    deltas = [
-        (prev["cv_score_mean"] - cur["cv_score_mean"], cur["dropped"])
-        for prev, cur in zip(trace, trace[1:])
-    ]
-    biggest_drop, dropped_at_biggest_step = max(deltas, key=lambda d: d[0])
-    other_drops = [d for d, name in deltas if name != dropped_at_biggest_step]
-
-    assert dropped_at_biggest_step == "d0"
-    assert biggest_drop > 3 * max(other_drops)
+    dropped_names = {row["dropped"] for row in trace if row["dropped"] is not None}
+    assert "d0" not in dropped_names
+    assert trace[-1]["descriptors"] == ["d0"]

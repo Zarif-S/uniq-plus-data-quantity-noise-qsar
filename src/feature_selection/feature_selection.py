@@ -297,7 +297,9 @@ def run_descriptor_rfe(
     dropped}. `dropped` is None on the first (no-elimination-yet) row.
     """
     if estimator_factory is None:
-        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1)
+        # importance_type='gain' -- LGBMRegressor defaults to 'split' (raw split counts),
+        # which is not what the elimination step below or its docstring describe.
+        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1, importance_type='gain')
 
     remaining = list(descriptor_map.keys())
     kf = KFold(n_splits=cv, shuffle=True, random_state=random_state)
