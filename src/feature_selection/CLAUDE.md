@@ -129,6 +129,46 @@ dropped_vif                               list[dict] VIF-prune drops: {dropped, 
 
 ## Implementation Notes
 
+### RFE audit: CV fold noise, selection-bias leakage, wide-descriptor survivor bias (2026-08-13 review)
+
+Three methodological concerns were raised against §5/§6/§9's RFE elimination and independently
+checked. **None required a pipeline change** — findings below, so this doesn't need re-litigating:
+
+**CV fold noise.** Every stage audit (`evaluate_descriptor_set`, `run_descriptor_rfe`) draws a
+*single* `KFold(..., random_state=42)` — 5-fold within that one draw, never repeated across
+seeds. Measured the noise this leaves by reseeding 8x: `cv_score_mean` (the mean-across-4-endpoints
+trace value §6 reads) has std ≈0.0043; per-endpoint std is ≈0.004–0.011 (smallest dataset, SOL
+n=2172, is noisiest at 0.0111). The declared elbow (5→4, −0.061) and cliff (3→2, −0.221) are
+14–50x this noise floor — safely real. The individual ≤0.008 step-to-step deltas in the 16→5
+range are within ~2x the noise floor, so don't over-read fine-grained ordering there — only the
+aggregate downward trend and the two big breaks are trustworthy at a single fixed seed.
+
+**Selection-bias leakage in `run_descriptor_rfe`.** Each round's elimination decision is a
+full-data LightGBM fit (no holdout); the `cv_score_mean` logged for the surviving set is a fresh
+5-fold CV on that same full data — textbook select-then-CV bias (Ambroise & McLachlan 2002). Risk
+is low here (≤16 candidates over 2000–3000 rows, not the thousands-of-candidates/~100-samples
+regime where this bias is severe), and it's empirically not visible: an 80/20 holdout check on the
+*final* 5-descriptor set (no re-selection, just refit-and-score on an untouched split) gave
+mean R²=0.369 across the 4 endpoints, vs. the reported all-data-CV `cv_score_mean`=0.361 — the
+holdout number is not lower, so there's no sign the reported figure is inflated. Safe to keep
+citing `cv_score_mean` as-is. **Isolated to this module**: `src/tuning/tuning.py`
+(`PredefinedSplit`, tuning never sees `X_val`/`X_test`) and `src/models/paper_models.py`
+(`tune_paper_model` fits `GridSearchCV` on `X_train` only, reports `r_test` from an untouched
+`X_test`) both already separate the data used for selection from the data used to report a
+number — `run_descriptor_rfe` is the one place in `src/` that doesn't, and per the above it isn't
+costing anything material in practice.
+
+**Wide (multi-feature) descriptors over-represented in the final 5 (`PEOE_VSA`, `SlogP_VSA` are
+2/5 vs. 12% of the starting 50-descriptor pool) — is this a max-gain draw-count artifact?** No.
+§8b's standalone (single-descriptor, no RFE involved) R² check already shows `PEOE_VSA`/`SlogP_VSA`
+are the two strongest descriptors in the *entire* pool alone (R²=0.265/0.255, vs. 0.038–0.040 for
+the scalars that outlasted them at N≤5) — real signal, independently verified, not a wideness
+artifact. The RFE tail's actual failure mode is the opposite of a wideness-bias story: gain-based
+importance is *marginal* (how much a descriptor helps given what's already in the model), so once
+one of these two highly-correlated-but-individually-strong descriptors is in, the other looks
+redundant and gets greedily dropped first (5→4 drops `SlogP_VSA`, 3→2 drops `PEOE_VSA`) — see §9's
+existing shadowing discussion, which this confirms rather than supersedes.
+
 ### Deduplicate molecules before variance/correlation/VIF
 
 **Issue**: Many compounds are tested across more than one of the 4 modelling endpoints. Naively
@@ -236,4 +276,4 @@ misprices descriptors that are individually strong but partially correlated with
 
 ---
 
-**Last Updated**: 2026-08-10 | **Status**: Active | **Maintainer**: Zarif
+**Last Updated**: 2026-08-13 | **Status**: Active | **Maintainer**: Zarif
