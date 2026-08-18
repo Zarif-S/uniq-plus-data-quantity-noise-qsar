@@ -1,0 +1,330 @@
+<title>Feature Selection Pipeline — 01.8</title>
+<style>
+:root{
+  --bg:#f6f4ef;
+  --panel:#ffffff;
+  --ink:#1c2420;
+  --ink-soft:#4b544e;
+  --muted:#7a8079;
+  --line:#dcd8cd;
+  --accent:#2e6b63;
+  --accent-ink:#173733;
+  --accent-soft:#dee9e5;
+  --amber:#a3661c;
+  --amber-soft:#f3e6d3;
+  --red:#a3382f;
+  --red-soft:#f4e0dd;
+  --mono:ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,ui-serif,Georgia,serif;
+  --sans:ui-sans-serif,"Segoe UI",Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#141815;
+    --panel:#1b211d;
+    --ink:#e9ece8;
+    --ink-soft:#b7bdb6;
+    --muted:#7d857e;
+    --line:#2c332d;
+    --accent:#6fbfb2;
+    --accent-ink:#d6efe9;
+    --accent-soft:#213130;
+    --amber:#dba75c;
+    --amber-soft:#332a1c;
+    --red:#e08b81;
+    --red-soft:#331f1d;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141815; --panel:#1b211d; --ink:#e9ece8; --ink-soft:#b7bdb6; --muted:#7d857e;
+  --line:#2c332d; --accent:#6fbfb2; --accent-ink:#d6efe9; --accent-soft:#213130;
+  --amber:#dba75c; --amber-soft:#332a1c; --red:#e08b81; --red-soft:#331f1d;
+}
+:root[data-theme="light"]{
+  --bg:#f6f4ef; --panel:#ffffff; --ink:#1c2420; --ink-soft:#4b544e; --muted:#7a8079;
+  --line:#dcd8cd; --accent:#2e6b63; --accent-ink:#173733; --accent-soft:#dee9e5;
+  --amber:#a3661c; --amber-soft:#f3e6d3; --red:#a3382f; --red-soft:#f4e0dd;
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--sans);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px;margin:0 auto;padding:3.5rem 1.5rem 6rem;}
+
+header.page{border-bottom:1px solid var(--line);padding-bottom:2rem;margin-bottom:2.5rem;}
+.eyebrow{
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 .8rem;
+}
+h1{
+  font-family:var(--serif); font-weight:500; font-size:2.15rem; margin:0 0 .6rem;
+  text-wrap:balance; color:var(--ink);
+}
+.dek{color:var(--ink-soft); font-size:1.02rem; max-width:62ch; margin:0 0 1rem;}
+.scope{
+  display:flex; flex-wrap:wrap; gap:.5rem 1.4rem; font-family:var(--mono); font-size:.78rem;
+  color:var(--muted);
+}
+.scope b{color:var(--ink-soft); font-weight:600;}
+
+h2.section-title{
+  font-family:var(--serif); font-weight:500; font-size:1.3rem; margin:3rem 0 .3rem;
+  color:var(--ink);
+}
+p.section-sub{color:var(--muted); font-size:.9rem; margin:0 0 1.4rem; max-width:64ch;}
+
+/* pipeline overview strip */
+.pipeline-strip{
+  display:grid; grid-template-columns:repeat(6,1fr); gap:0; margin:1.5rem 0 .5rem;
+  border:1px solid var(--line); border-radius:10px; overflow:hidden;
+}
+.pipeline-strip a{grid-column:span 1;}
+.p-cell{
+  background:var(--panel); padding:.85rem .6rem; text-align:center;
+  border-right:1px solid var(--line); position:relative;
+}
+.p-cell:last-child{border-right:none;}
+.p-cell .n{font-family:var(--mono); font-size:.68rem; color:var(--muted);}
+.p-cell .r2{font-family:var(--mono); font-size:1.05rem; font-weight:600; color:var(--accent); font-variant-numeric:tabular-nums;}
+.p-cell .lbl{font-size:.68rem; color:var(--ink-soft); margin-top:.15rem;}
+.pipeline-arrow{
+  text-align:center; color:var(--muted); font-size:.8rem; padding:.15rem 0 .9rem;
+}
+
+/* stage cards */
+.stage{
+  display:grid; grid-template-columns:64px 1fr; gap:1.1rem;
+  padding:1.4rem 0; border-top:1px solid var(--line);
+}
+.stage:first-of-type{border-top:none;}
+.stage-num{
+  font-family:var(--serif); font-size:1.9rem; color:var(--line); font-weight:500;
+  line-height:1; padding-top:.1rem;
+}
+.stage.is-final .stage-num{color:var(--accent);}
+.stage-body h3{
+  margin:0 0 .35rem; font-size:1.05rem; font-weight:600; color:var(--ink);
+  display:flex; align-items:baseline; gap:.6rem; flex-wrap:wrap;
+}
+.stage-body h3 .method{
+  font-family:var(--mono); font-size:.72rem; font-weight:500; color:var(--accent);
+  background:var(--accent-soft); padding:.15rem .5rem; border-radius:5px;
+}
+.stage-body p{margin:.4rem 0; color:var(--ink-soft); font-size:.92rem; max-width:66ch;}
+.stage-body p.why{color:var(--muted); font-size:.87rem;}
+.stage-body p.why::before{content:"why — "; font-family:var(--mono); text-transform:uppercase; letter-spacing:.06em; font-size:.68rem; color:var(--muted);}
+.stat-row{
+  display:flex; gap:1.6rem; margin-top:.7rem; font-family:var(--mono); font-size:.82rem;
+  flex-wrap:wrap;
+}
+.stat-row .stat b{display:block; font-size:1.15rem; color:var(--ink); font-variant-numeric:tabular-nums;}
+.stat-row .stat span{color:var(--muted); font-size:.72rem;}
+.stat-row .stat.hi b{color:var(--accent);}
+
+/* diagnostic side notes */
+.diag{
+  margin:.9rem 0 0; padding:.8rem 1rem; background:var(--amber-soft); border-left:3px solid var(--amber);
+  border-radius:0 6px 6px 0; font-size:.85rem; color:var(--ink-soft);
+}
+.diag b{color:var(--ink); font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em;}
+.diag.bug{background:var(--red-soft); border-left-color:var(--red);}
+.diag.bug b{color:var(--red);}
+
+/* recommendation callout */
+.reco{
+  margin:2.5rem 0; padding:1.6rem 1.8rem; background:var(--accent-soft); border-radius:12px;
+  border:1px solid var(--accent);
+}
+.reco .eyebrow{margin-bottom:.4rem;}
+.reco h3{font-family:var(--serif); font-size:1.3rem; margin:0 0 .5rem; color:var(--accent-ink);}
+.reco p{margin:.4rem 0; color:var(--ink-soft); font-size:.92rem; max-width:66ch;}
+.reco .desc-defs{display:flex; gap:1.5rem; margin-top:1rem; flex-wrap:wrap;}
+.desc-defs .d{flex:1; min-width:220px;}
+.desc-defs .d .name{font-family:var(--mono); font-weight:600; color:var(--accent-ink); font-size:.85rem;}
+.desc-defs .d p{font-size:.83rem; margin:.25rem 0 0;}
+
+/* bar chart */
+.chart{margin:1.5rem 0 0;}
+.bars{display:flex; align-items:flex-end; gap:1rem; height:220px; padding:0 0 0; border-bottom:1px solid var(--line);}
+.bar-col{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative;}
+.bar-col .pct{font-family:var(--mono); font-size:.72rem; color:var(--panel); font-weight:700; margin-bottom:6px;}
+.bar-col .fill{width:100%; max-width:64px; background:var(--accent); border-radius:4px 4px 0 0; position:relative; display:flex; align-items:flex-end; justify-content:center;}
+.bar-col:last-child .fill{background:var(--ink-soft);}
+.bar-col .feat{font-family:var(--mono); font-size:.65rem; color:var(--muted); position:absolute; bottom:calc(100% + 4px); white-space:nowrap;}
+.bar-labels{display:flex; gap:1rem; margin-top:.6rem;}
+.bar-labels div{flex:1; text-align:center; font-size:.72rem; color:var(--muted); line-height:1.3;}
+.ceiling-line{border-top:1.5px dashed var(--muted); position:relative; margin-top:-1px;}
+
+footer.note{
+  margin-top:3rem; padding-top:1.2rem; border-top:1px solid var(--line);
+  font-size:.78rem; color:var(--muted); font-family:var(--mono);
+}
+
+@media (max-width:640px){
+  .pipeline-strip{grid-template-columns:repeat(3,1fr);}
+  .stage{grid-template-columns:36px 1fr;}
+  .stage-num{font-size:1.3rem;}
+}
+</style>
+
+<div class="wrap">
+
+<header class="page">
+  <p class="eyebrow">01.8 — Feature Selection · rdmoldes descriptor set</p>
+  <h1>Which 50 descriptors actually earn their place?</h1>
+  <p class="dek">A six-stage funnel that starts at 316 raw rdkit-descriptor features and asks, at every step, "does removing this cost any predictive signal?" — ending in a 2-descriptor set that keeps 82% of the ceiling.</p>
+  <div class="scope">
+    <span><b>Dataset:</b> 3,509 unique ADME molecules</span>
+    <span><b>Endpoints:</b> HLM, RLM, MDR1, SOL</span>
+    <span><b>Featureset:</b> rdmoldes only — FCFP4/ECFP4 untouched</span>
+    <span><b>Granularity:</b> decisions made per named descriptor, never per raw feature</span>
+  </div>
+</header>
+
+<h2 class="section-title">The funnel, at a glance</h2>
+<p class="section-sub">Mean 5-fold CV R² across the 4 endpoints, as descriptor count drops. Each stage's job: cut features without cutting the R² line below it.</p>
+
+<div class="pipeline-strip">
+  <div class="p-cell"><div class="r2">100%</div><div class="n">48 desc · 314 ft</div><div class="lbl">No pruning</div></div>
+  <div class="p-cell"><div class="r2">97%</div><div class="n">27 desc · 92 ft</div><div class="lbl">Correlation (CCA)</div></div>
+  <div class="p-cell"><div class="r2">91%</div><div class="n">16 desc · 40 ft</div><div class="lbl">VIF prune</div></div>
+  <div class="p-cell"><div class="r2">85%</div><div class="n">5 desc · 29 ft</div><div class="lbl">RFE elbow</div></div>
+  <div class="p-cell"><div class="r2">85%</div><div class="n">3 desc · 27 ft</div><div class="lbl">Top-3 solo</div></div>
+  <div class="p-cell" style="background:var(--accent-soft);"><div class="r2">82%</div><div class="n">2 desc · 26 ft</div><div class="lbl"><b>Top-2 solo ★</b></div></div>
+</div>
+
+<h2 class="section-title">Stage by stage</h2>
+<p class="section-sub">Method, mechanism, and the reasoning behind each cut.</p>
+
+<div class="stage">
+  <div class="stage-num">0</div>
+  <div class="stage-body">
+    <h3>Descriptor map + constant filter <span class="method">variance threshold</span></h3>
+    <p>The paper's 50 named rdmoldes descriptors expand to 316 numeric features (44 are single scalars; 6 are vector-valued, e.g. <code>AUTOCORR2D</code> → 192 columns). Any descriptor whose features have ~zero variance across all 3,509 molecules — it returns essentially the same value for every compound — is dropped outright. <code>CalcPBF</code> and <code>CalcSpherocityIndex</code> drop here: both formulas evaluate to exactly 0 when every atom has <code>z=0</code>, which is true for this whole dataset (flat 2D depiction coordinates inherited from the source SDFs, not real conformers — see ADR-011).</p>
+    <p class="why">a descriptor that can't distinguish any two molecules can't help any model, by construction — free to remove before any correlation/model logic runs.</p>
+    <div class="stat-row">
+      <div class="stat"><b>50 → 48</b><span>descriptors</span></div>
+      <div class="stat"><b>316 → 314</b><span>features</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="stage-num">1</div>
+  <div class="stage-body">
+    <h3>Components + mutual information <span class="method">PCA · MI</span></h3>
+    <p>Every surviving descriptor is reduced to its top principal components — scalar descriptors reduce to 1, multi-feature blocks (like <code>AUTOCORR2D</code>) to several — so a 192-column block isn't judged on one coincidentally-informative axis. Mutual information against each endpoint's target is then computed per component, taking the <em>max over (component, endpoint)</em> per descriptor.</p>
+    <p class="why">this isn't a filtering step by itself — it builds the MI score used as a tiebreaker in stages 2 and 3, and the rule "useful for <em>any</em> endpoint" deliberately avoids penalizing a descriptor that only matters for one of the four.</p>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="stage-num">2</div>
+  <div class="stage-body">
+    <h3>Correlation prune <span class="method">canonical correlation (CCA)</span></h3>
+    <p>For every near-duplicate pair of descriptors — canonical correlation between their top-component sets &gt; 0.9 — drop the one with lower max-MI. CCA generalizes Pearson correlation from a single variable to a whole set of components on each side, so a multi-feature descriptor isn't judged only on its first PC.</p>
+    <p class="why">two descriptors that move together linearly are redundant no matter how each is internally structured; CCA is the correct measure for that redundancy at the group level rather than the single-axis level.</p>
+    <div class="stat-row">
+      <div class="stat hi"><b>0.406</b><span>mean CV R²</span></div>
+      <div class="stat"><b>48 → 27</b><span>descriptors</span></div>
+      <div class="stat"><b>314 → 92</b><span>features</span></div>
+      <div class="stat"><b>97%</b><span>of ceiling</span></div>
+    </div>
+    <div class="diag"><b>known limitation</b> CCA only catches <em>linear</em> redundancy — a genuinely nonlinear dependency between two descriptors could survive this step. Not fixed here because VIF and the RFE/R² audit downstream both re-check against real model performance, so a wrong call isn't silently trusted.</div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="stage-num">3</div>
+  <div class="stage-body">
+    <h3>VIF prune <span class="method">variance inflation factor</span></h3>
+    <p>Iteratively drop the single highest-VIF descriptor block — multicollinearity measured against <em>all</em> other surviving blocks at once, not just pairwise — until every survivor is at or below threshold 5.0. Near-ties broken by MI.</p>
+    <p class="why">CCA (stage 2) only checks pairs; a descriptor can look fine against every individual peer while still being a near-linear combination of three others jointly. VIF catches that group-level redundancy.</p>
+    <div class="stat-row">
+      <div class="stat hi"><b>0.382</b><span>mean CV R²</span></div>
+      <div class="stat"><b>27 → 16</b><span>descriptors</span></div>
+      <div class="stat"><b>92 → 40</b><span>features</span></div>
+      <div class="stat"><b>91%</b><span>of ceiling</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="stage-num">4</div>
+  <div class="stage-body">
+    <h3>LightGBM recursive elimination <span class="method">RFE · gain-importance</span></h3>
+    <p>Runs on each endpoint's own real feature columns (not PC1). At every step: fit LightGBM per endpoint, score each remaining descriptor by max gain-importance across endpoints, drop the lowest scorer, log the CV R². Run all the way to 1 descriptor so the full trace — not just an arbitrary stopping floor — is visible; the first real elbow sits at 5→4 descriptors.</p>
+    <p class="why">a visible trace lets a bad elimination show up as a drop rather than being silently accepted — earlier runs stopped at 10 or 3 descriptors with no such justification and would have missed the second, much larger cliff later in the trace (3→2, the single biggest drop anywhere).</p>
+    <div class="stat-row">
+      <div class="stat hi"><b>0.356</b><span>mean CV R²</span></div>
+      <div class="stat"><b>16 → 5</b><span>descriptors</span></div>
+      <div class="stat"><b>40 → 29</b><span>features</span></div>
+      <div class="stat"><b>85%</b><span>of ceiling</span></div>
+    </div>
+    <div class="diag bug"><b>bug found &amp; fixed</b> RFE was eliminating on scikit-learn's <em>default</em> <code>feature_importances_</code> — split-count, not gain — despite every surrounding comment describing gain. Caught because <code>CalcEccentricity</code> (flat-2D-geometry descriptor, ADR-011) survived to the final 5 with <strong>zero</strong> gain-importance, while its rank-twin <code>CalcNPR2</code> (Spearman ρ=1.0) had already been dropped at correlation-prune. Fixed by setting <code>importance_type='gain'</code> explicitly; the corrected final 5 replaced <code>CalcEccentricity</code>/<code>CalcPMI3</code> with <code>CalcNumAromaticCarbocycles</code>/<code>CalcChi3v</code>.</div>
+  </div>
+</div>
+
+<div class="stage is-final">
+  <div class="stage-num">5</div>
+  <div class="stage-body">
+    <h3>Standalone-ranked refinement <span class="method">solo CV R² ranking</span></h3>
+    <p>A distinct question from RFE: not "what's safe to remove one at a time," but "which individual descriptors carry the most signal on their own?" Each of the pool's descriptors is scored by its <em>standalone</em> CV R² (a single-descriptor model), then the top-N by that ranking is compared directly against RFE's own trace at the same N.</p>
+    <p class="why">RFE's greedy, marginal scoring has a blind spot at the tail: once a few descriptors are individually strong <em>and</em> partially correlated with each other, gain-importance undersells whichever one entered the model second. Standalone-ranked sidesteps that entirely by scoring each descriptor in isolation.</p>
+    <div class="stat-row">
+      <div class="stat"><b>0.355</b><span>Top-3 solo R²</span></div>
+      <div class="stat hi"><b>0.346</b><span>Top-2 solo R²</span></div>
+      <div class="stat"><b>82–85%</b><span>of ceiling</span></div>
+    </div>
+    <div class="diag"><b>what the comparison found</b> Standalone, <code>PEOE_VSA</code> (R²=0.265) and <code>SlogP_VSA</code> (R²=0.255) are the two strongest descriptors in the entire 16-descriptor pool — yet RFE's greedy trace drops them <em>first</em> (5→4 and 3→2, including the trace's single biggest drop) because gain-importance is a marginal measure: once one VSA descriptor is in the model, the other's <em>added</em> value looks small even though its <em>standalone</em> value is huge. At N=2, RFE's own picks (<code>CalcTPSA</code> + <code>CalcChi3v</code>) score R²=0.066 — barely above noise — versus 0.346 for the standalone-ranked pair.</div>
+  </div>
+</div>
+
+<div class="reco">
+  <p class="eyebrow" style="margin-bottom:.2rem;">Recommendation</p>
+  <h3>N = 2 — PEOE_VSA + SlogP_VSA</h3>
+  <p>Not a compromise pick: it's the actual point of diminishing returns. 26 of the 5-descriptor RFE set's 29 features, 96% of what the full 16→5 RFE pipeline achieves (0.346 vs. 0.356 R²), and standalone-ranked rather than greedily eliminated — so it doesn't inherit RFE's tail-end unreliability. Every descriptor added past these two buys single-digit R² returns at best.</p>
+  <div class="desc-defs">
+    <div class="d">
+      <div class="name">PEOE_VSA</div>
+      <p>Van der Waals surface area binned by Gasteiger partial charge (14 bins) — how much of the molecule's surface is electron-rich vs. electron-poor. Its polarity / H-bonding character.</p>
+    </div>
+    <div class="d">
+      <div class="name">SlogP_VSA</div>
+      <p>Same surface-area partitioning, binned by each atom's Crippen logP contribution (12 bins) — how much surface is lipophilic vs. not, and where.</p>
+    </div>
+  </div>
+  <p style="margin-top:.9rem;">Together: a compact "polar surface vs. lipophilic surface" fingerprint — directly mechanistic for all 4 endpoints modelled here (HLM/RLM clearance, MDR1 efflux, aqueous solubility are all lipophilicity/polarity-governed ADME properties).</p>
+</div>
+
+<h2 class="section-title">Variance explained vs. feature count</h2>
+<p class="section-sub">Reproduction of <code>figures/section_fs_variance_explained_by_stage.png</code> — mean CV R² by pruning stage, annotated with the descriptor/feature cost at each step.</p>
+
+<div class="chart">
+  <div class="bars">
+    <div class="bar-col"><span class="feat">314 ft · 48 desc</span><div class="fill" style="height:100%;"><span class="pct">100%</span></div></div>
+    <div class="bar-col"><span class="feat">92 ft · 27 desc</span><div class="fill" style="height:97%;"><span class="pct">97%</span></div></div>
+    <div class="bar-col"><span class="feat">40 ft · 16 desc</span><div class="fill" style="height:91%;"><span class="pct">91%</span></div></div>
+    <div class="bar-col"><span class="feat">29 ft · 5 desc</span><div class="fill" style="height:85%;"><span class="pct">85%</span></div></div>
+    <div class="bar-col"><span class="feat">27 ft · 3 desc</span><div class="fill" style="height:85%;"><span class="pct">85%</span></div></div>
+    <div class="bar-col"><span class="feat">26 ft · 2 desc</span><div class="fill" style="height:82%; background:var(--accent); box-shadow:0 0 0 2px var(--accent-ink) inset;"><span class="pct">82%</span></div></div>
+  </div>
+  <div class="bar-labels">
+    <div>No pruning</div>
+    <div>Correlation prune (CCA)</div>
+    <div>VIF prune</div>
+    <div>RFE elbow (N=5)</div>
+    <div>Top-3 solo</div>
+    <div><b>Top-2 solo ★</b></div>
+  </div>
+</div>
+
+<footer class="note">notebooks/01.8_feature_selection.ipynb · data/processed/section_fs_stage_summary.csv · src/feature_selection/</footer>
+
+</div>

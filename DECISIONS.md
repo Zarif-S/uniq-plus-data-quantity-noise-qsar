@@ -232,7 +232,7 @@ Secondary reasons:
 
 ## ADR-005 — Label Noise Model Definitions
 
-**Date**: 2026-07-21 (levels amended 2026-08-11)
+**Date**: 2026-07-21 (levels amended 2026-08-11; Gaussian/bias reparameterized to fold-error 2026-08-13)
 **Status**: Decided
 **Decider**: Zarif
 
@@ -242,9 +242,11 @@ Secondary reasons:
 
 Three types of label noise are injected into `y_train` for the noise-injection experiments (`04_adme_noise.ipynb`), following the taxonomy of Landrum & Riniker. Each noise type models a distinct real-world assay imperfection. The exact formulations need to be pinned to avoid ambiguity in the writeup.
 
-All noise levels are expressed as fractions of `std(y)` for the endpoint being corrupted, making them scale-invariant across HLM, MDR1, SOL, and RLM.
+**Levels are coarse-scan anchors, not final reported values** (amended 2026-08-11): the levels below are used as a coarse scan (mirrors `03_adme_data_quantity.ipynb`'s fraction methodology) — run the full grid at low seed count, use a fixed-threshold pass to locate each `(endpoint, model, noise_type)` curve's collapse point empirically, then zoom in below the knee with a finer grid and more seeds for the reported curves.
 
-**Levels are coarse-scan anchors, not final reported values** (amended 2026-08-11). `sigma_frac`/`bias_frac` = 1.0 corrupts a label with noise equal to the full spread of the endpoint — the `NoiseEstimator` ceiling (R² = 1 − σ²/Var(y), see `src/noise/CLAUDE.md`) is ≈0 at that point, i.e. signal is gone by construction. Rather than pre-selecting a "realistic" range, the levels below are used as a coarse scan (mirrors `03_adme_data_quantity.ipynb`'s fraction methodology): run the full grid at low seed count, use a fixed-threshold pass to locate each `(endpoint, model, noise_type)` curve's collapse point empirically, then zoom in below the knee with a finer grid and more seeds for the reported curves. The extreme level (1.0 for Gaussian/bias) is kept as a sanity-check anchor confirming the curve reaches the theoretical ceiling, not as a claimed-realistic operating point.
+**Gaussian and systematic bias are parameterized in fold-error, not `std(y)`-fraction** (amended 2026-08-13). The original formulation expressed noise as `sigma_frac`/`bias_frac × std(y)` — a fraction of the endpoint's *own* label spread, which means the same `sigma_frac` corresponds to a different absolute noise magnitude on different endpoints (it isn't scale-invariant in the way that matters: two endpoints with the same real assay reproducibility would get different injected noise). Fold-error (`σ`/`bias` = `log10(fold)`, an absolute log-scale quantity) fixes this — it's literally how assay reproducibility is reported in the ADME literature (e.g. "2–3 fold" for HLM/solubility), so an injected level is now interpretable against real assay noise instead of an arbitrary fraction. It also matches `src/eda/eda.py::FOLD_LEVELS` (`[2, 3, 5, 10]`, used by `max_corr_report` — the Brown, Muchmore & Hajduk noise-ceiling model, via Pat Walters' `useful_rdkit_utils.max_possible_correlation`), so the noise-degradation curves and the data's own noise ceiling can be overlaid on the same axis (`04_adme_noise.ipynb` §3.5). The extreme level (10-fold) is kept as a sanity-check anchor confirming the curve approaches that ceiling, not as a claimed-realistic operating point.
+
+**Gross errors stays in `error_frac`** (fraction of labels corrupted) — fold-error describes the *magnitude* of a measurement's noise, but gross errors are a categorical corruption (a label is either untouched or replaced outright), so there's no meaningful "fold" for it. Consequently the `max_corr_report` ceiling overlay applies only to the Gaussian/bias panels, not gross errors — the ceiling formula assumes i.i.d. Gaussian assay noise, which doesn't describe a uniform-random label replacement process.
 
 ---
 
@@ -253,22 +255,22 @@ All noise levels are expressed as fractions of `std(y)` for the endpoint being c
 **1. Gaussian noise** (`add_gaussian_noise`) — intra-assay variability
 
 ```
-σ = sigma_frac × std(y)
+σ = log10(fold)                          [absolute log-scale noise, NOT a fraction of std(y)]
 y_noisy[i] = y[i] + ε[i],   ε[i] ~ N(0, σ²)  for all i
 ```
 
-Independent per-label additive noise. Models random measurement error within a single experimental batch (pipetting variability, instrument drift). Levels: `sigma_frac ∈ {0.0, 0.1, 0.3, 0.5, 1.0}`.
+Independent per-label additive noise. Models random measurement error within a single experimental batch (pipetting variability, instrument drift). Levels: `fold ∈ {2, 3, 5, 10}` (0-fold/no-noise covered once by the shared baseline, not repeated per type). Implementation note: `add_gaussian_noise()` itself still takes `sigma_frac` (unchanged, to avoid a signature break — see `src/noise/CLAUDE.md`); the caller converts `sigma_frac = log10(fold) / std(y_train)` per endpoint before calling it, so the function's own contract is untouched and only the notebook-level noise-level *meaning* changed.
 
 **2. Systematic bias** (`add_systematic_bias`) — inter-assay bias
 
 ```
-bias = bias_frac × std(y)
+bias = log10(fold)                       [absolute log-scale shift, NOT a fraction of std(y)]
 S[i] ~ Bernoulli(0.5) independently per label   (random 50% selection)
 y_noisy[i] = y[i] + bias   if S[i] = 1
 y_noisy[i] = y[i]          if S[i] = 0
 ```
 
-A constant positive shift applied to a random half of the training labels. Models inter-assay bias — e.g. two labs running the same assay with a systematic offset between instruments. The shift is one-directional (always positive), so it introduces a net upward shift in the training distribution mean. Levels: `bias_frac ∈ {0.0, 0.1, 0.3, 0.5, 1.0}`.
+A constant positive shift applied to a random half of the training labels. Models inter-assay bias — e.g. two labs running the same assay with a systematic offset between instruments. The shift is one-directional (always positive), so it introduces a net upward shift in the training distribution mean. Levels: `fold ∈ {2, 3, 5, 10}`, same conversion approach as Gaussian (`bias_frac = log10(fold) / std(y_train)` computed per endpoint at call time).
 
 **3. Gross errors** (`add_gross_errors`) — annotation errors
 
@@ -279,7 +281,7 @@ y_noisy[i] = U[y.min(), y.max()]   for i ∈ idx
 y_noisy[i] = y[i]                  for i ∉ idx
 ```
 
-Replaces `k` labels with values drawn uniformly from the observed endpoint range. Models annotation errors — transcription mistakes, sample mix-ups, or wrong structure-activity assignments. Clamped to `[y.min(), y.max()]` by design to avoid out-of-distribution outliers. Levels: `error_frac ∈ {0.0, 0.01, 0.05, 0.10, 0.20}`.
+Replaces `k` labels with values drawn uniformly from the observed endpoint range. Models annotation errors — transcription mistakes, sample mix-ups, or wrong structure-activity assignments. Clamped to `[y.min(), y.max()]` by design to avoid out-of-distribution outliers. Levels: `error_frac ∈ {0.0, 0.01, 0.05, 0.10, 0.20}` — unchanged, no fold-error equivalent (see reparameterization note above).
 
 ---
 
@@ -293,7 +295,7 @@ Replaces `k` labels with values drawn uniformly from the observed endpoint range
 
 ### Reference
 
-Landrum, G. & Riniker, S. (taxonomy). Implemented in `src/noise/noise.py`.
+Landrum, G. & Riniker, S. (taxonomy). Implemented in `src/noise/noise.py`. Fold-error / noise-ceiling: Brown, Muchmore & Hajduk (via `useful_rdkit_utils.max_possible_correlation`), implemented in `src/eda/eda.py::max_corr_report`.
 
 ---
 

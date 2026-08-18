@@ -56,7 +56,7 @@ state is held.
 - The current `selected_descriptors.json` selection is global across all 4 endpoints, not
   per-endpoint — only revisit with a per-endpoint re-selection if one endpoint's downstream model
   performance is significantly worse than the others (SOL is already the weakest at the current
-  5-descriptor cutoff, R²=0.272 — the natural first candidate to check)
+  2-descriptor selection, R²=0.243 — the natural first candidate to check)
 - No function mutates its inputs; all are pure given the same arguments
 
 ---
@@ -113,7 +113,7 @@ print(r2['mean'])  # mean CV R^2 across the 4 endpoints
 ### `selected_descriptors.json` schema
 
 ```
-selected_descriptors                      list[str]  the 5 final descriptor names
+selected_descriptors                      list[str]  the final descriptor names (currently 2: PEOE_VSA, SlogP_VSA)
 selected_features                         list[int]  corresponding column indices into rdmoldes()'s 316-feature output
 cv_score_mean                             float      mean CV R^2 across 4 endpoints at the final cutoff
 cv_score_by_endpoint                      dict       per-endpoint CV R^2 at the final cutoff
@@ -192,6 +192,16 @@ descriptors' PC1-to-PC1 Pearson correlation privileges each one's single dominan
 miss real redundancy (or falsely flag redundancy) living in later components — especially
 consequential for a 192-feature descriptor like `AUTOCORR2D`.
 
+**How this was arrived at**: the original idea was to PCA-reduce each vector descriptor to its
+top-5 components so it could be compared against scalar descriptors on equal footing. That still
+left the "vector vs scalar" comparison problem unsolved — comparing a 5-component set to a single
+scalar via ordinary Pearson only works one component at a time (in practice, PC1 only), throwing
+away whatever redundancy lives in PC2–PC5. CCA solves this directly: it optimises a linear
+combination of each side jointly, so it generalises to vector-vs-vector *and* vector-vs-scalar
+(when one side is a scalar, `k=1` and CCA degenerates to the multiple correlation coefficient
+between the vector's best linear combination and that scalar) — no separate scalar-handling case
+needed.
+
 **Solution**: `correlation_prune` uses the first canonical correlation between two descriptors'
 full top-k component sets (`_canonical_correlation`, via `sklearn.cross_decomposition.CCA`) — the
 standard generalisation of Pearson correlation to two multi-dimensional variable sets.
@@ -233,6 +243,49 @@ upstream featurization or descriptor pool ever changes: the function itself make
 about where the elbow will be.
 
 **Location**: `notebooks/01.8_feature_selection.ipynb` §5–6
+
+### `run_descriptor_rfe` credited a descriptor's max column gain, not its total — underrating wide blocks
+
+**Issue**: Even after fixing split-count vs. gain-importance (below), the N<=5 tail of the
+RFE trace was still unreliable: greedy elimination dropped `SlogP_VSA` at 5->4 and
+`PEOE_VSA` at 3->2 — the two strongest descriptors in the entire candidate pool by
+standalone R² (0.265/0.255) — before the two weakest scalars (`CalcTPSA`/`CalcChi3v`,
+solo R²=0.038/0.040), which were left standing at N=1. §8b's standalone-ranking
+workaround was built specifically to recover the right answer despite this.
+
+**Root cause**: descriptor importance was `max()` over a descriptor's own feature
+columns' gain, per endpoint. A scalar descriptor's entire gain is concentrated
+(undivided) in its one column, so `max()` returns its true total contribution. A wide
+descriptor like `PEOE_VSA` (14 columns) or `SlogP_VSA` (12 columns) spreads its gain
+across several correlated columns — `max()` credits it only for its single
+best-performing column, systematically underrating the block's real total contribution
+relative to a scalar. This compounds (doesn't replace) the marginal-masking effect
+already documented in the notebook's §9: once one VSA descriptor is in the model,
+gain-importance undersells the other's *marginal* value too.
+
+**Verified empirically**: reran the 16->1 elimination on the identical starting pool and
+seed, `max()` vs `sum()` block-gain aggregation, both with `importance_type='gain'`:
+
+| N | max() (previous) | sum() (current) |
+|---|---|---|
+| 5 | 0.3606 | 0.3606 (identical down to here) |
+| 4 | 0.2997 — drops `SlogP_VSA` (-0.061) | 0.3590 — drops `CalcNumAromaticCarbocycles` (-0.0016) |
+| 3 | 0.2873 — drops `CalcNumAromaticCarbocycles` | 0.3437 — drops `CalcTPSA` |
+| 2 | 0.0663 — drops `PEOE_VSA` (-0.221 cliff) | **0.3458** — drops `CalcChi3v` |
+| 1 | 0.0404 — `CalcTPSA` alone | 0.2651 — `SlogP_VSA` alone |
+
+With `sum()`, RFE's own greedy trace lands on `{PEOE_VSA, SlogP_VSA}` at N=2 (R²=0.3458)
+directly — the exact set and score §8b's standalone-ranking workaround previously had to
+recover separately. The trace is flat (within the ~0.004-0.011 CV-fold noise floor) from
+N=5 to N=2, with one real elbow at N=2->1 (-0.081, dropping `SlogP_VSA`).
+
+**Fixed**: `run_descriptor_rfe` now sums (not maxes) a descriptor's own column gains
+before taking the max across endpoints. §8b (`notebooks/01.8_feature_selection.ipynb`)
+is no longer a required correction — it's kept as a confirmatory diagnostic, since RFE's
+own trace now reaches the same conclusion on its own.
+
+**Location**: `src/feature_selection/feature_selection.py::run_descriptor_rfe`,
+`notebooks/01.8_feature_selection.ipynb` §5, §8b, §9
 
 ### `run_descriptor_rfe` was eliminating on split-count, not gain-importance
 
@@ -276,4 +329,4 @@ misprices descriptors that are individually strong but partially correlated with
 
 ---
 
-**Last Updated**: 2026-08-13 | **Status**: Active | **Maintainer**: Zarif
+**Last Updated**: 2026-08-18 | **Status**: Active | **Maintainer**: Zarif

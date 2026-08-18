@@ -25,6 +25,8 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.preprocessing import StandardScaler
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
+from src.hyperparams import n_jobs_model, n_jobs_cv
+
 # (descriptor_name, n_features), in the exact order rdmoldes() concatenates them.
 RDMOLDES_DESCRIPTORS = [
     ("CalcTPSA", 1), ("CalcFractionCSP3", 1), ("CalcNumAliphaticCarbocycles", 1),
@@ -248,7 +250,7 @@ def evaluate_descriptor_set(X_by_endpoint, y_by_endpoint, descriptor_map, descri
     mostly redundant signal or something that mattered.
     """
     if estimator_factory is None:
-        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1)
+        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1, n_jobs=n_jobs_model)
     features = sorted(f for name in descriptors for f in descriptor_map[name])
     kf = KFold(n_splits=cv, shuffle=True, random_state=random_state)
     X_sub_by_endpoint = {ep: X[:, features] for ep, X in X_by_endpoint.items()}
@@ -258,11 +260,13 @@ def evaluate_descriptor_set(X_by_endpoint, y_by_endpoint, descriptor_map, descri
 
 
 def _cv_score_by_endpoint(X_by_endpoint, y_by_endpoint, estimator_factory, cv, scoring):
+    # n_jobs=n_jobs_cv (1): the estimator itself owns all cores (n_jobs_model=-1 in the
+    # factories above) -- one parallelism layer only, per src/hyperparams's oversubscription note.
     scores = {}
     for endpoint, X in X_by_endpoint.items():
         y = y_by_endpoint[endpoint]
         scores[endpoint] = cross_val_score(
-            estimator_factory(), X, y, cv=cv, scoring=scoring, n_jobs=-1
+            estimator_factory(), X, y, cv=cv, scoring=scoring, n_jobs=n_jobs_cv
         ).mean()
     return scores
 
@@ -280,13 +284,29 @@ def run_descriptor_rfe(
     """Recursive descriptor elimination: drop the least-useful descriptor one at a time, tracking CV score.
 
     At each step, fits one LightGBM per endpoint on the currently-included features (full
-    features of surviving descriptors, not PC1), takes each descriptor's max feature
-    gain-importance per endpoint, then the max across endpoints as that descriptor's
-    overall importance for this step (a descriptor is "useful" if useful for any
-    endpoint) — and eliminates the lowest-scoring descriptor. CV score (mean across
-    endpoints) is recorded before each removal so the caller can inspect the
-    score-vs-n_descriptors trace and pick a cutoff, rather than this function silently
-    deciding a fixed target size.
+    features of surviving descriptors, not PC1), takes each descriptor's SUMMED feature
+    gain-importance per endpoint (total loss reduction credited to the descriptor's whole
+    column block, not just its single best-performing column), then the max across
+    endpoints as that descriptor's overall importance for this step (a descriptor is
+    "useful" if useful for any endpoint) — and eliminates the lowest-scoring descriptor.
+    CV score (mean across endpoints) is recorded before each removal so the caller can
+    inspect the score-vs-n_descriptors trace and pick a cutoff, rather than this function
+    silently deciding a fixed target size.
+
+    Why sum(), not max(), across a descriptor's own columns: an earlier version used
+    max(), which credits a wide descriptor (e.g. PEOE_VSA, 14 columns) only for its single
+    best-performing column, while a scalar descriptor's entire gain is concentrated
+    (undivided) in its one column. When a wide descriptor's real signal is spread across
+    several correlated columns, max() structurally underrates the whole block relative to
+    a scalar — this was empirically confirmed to be exactly what happened here: with
+    max(), RFE's own tail-end trace (N<=5) eliminated PEOE_VSA/SlogP_VSA — the two
+    strongest descriptors in the entire candidate pool by standalone R² — before weaker
+    scalars, producing a spurious N=2 floor (R^2=0.066, barely above noise). Switching to
+    sum() makes RFE's own trace converge directly on {PEOE_VSA, SlogP_VSA} at N=2
+    (R^2=0.346) with a flat, noise-floor-only decline from N=5 to N=2 and a single real
+    elbow at N=2->1 — matching what a separate standalone-ranking workaround
+    (notebooks/01.8_feature_selection.ipynb §8b) previously had to be built to recover.
+    See src/feature_selection/CLAUDE.md for the full max-vs-sum trace comparison.
 
     X_by_endpoint / y_by_endpoint: {endpoint_name: array/Series}, one X per endpoint since
     each endpoint has its own non-NaN row subset. All X arrays must have the full
@@ -299,7 +319,7 @@ def run_descriptor_rfe(
     if estimator_factory is None:
         # importance_type='gain' -- LGBMRegressor defaults to 'split' (raw split counts),
         # which is not what the elimination step below or its docstring describe.
-        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1, importance_type='gain')
+        estimator_factory = lambda: LGBMRegressor(n_estimators=200, random_state=random_state, verbose=-1, importance_type='gain', n_jobs=n_jobs_model)
 
     remaining = list(descriptor_map.keys())
     kf = KFold(n_splits=cv, shuffle=True, random_state=random_state)
@@ -321,14 +341,15 @@ def run_descriptor_rfe(
         if len(remaining) <= min_descriptors:
             break
 
-        # Descriptor importance for this step: max feature gain per endpoint, then max across endpoints.
+        # Descriptor importance for this step: summed feature gain per endpoint (total
+        # loss reduction credited to the whole descriptor block), then max across endpoints.
         importance = pd.Series(0.0, index=remaining)
         for endpoint, X in X_sub_by_endpoint.items():
             model = estimator_factory()
             model.fit(X, y_by_endpoint[endpoint])
             gains = pd.Series(model.feature_importances_, index=features)
             for name in remaining:
-                gain = gains[descriptor_map[name]].max()
+                gain = gains[descriptor_map[name]].sum()
                 importance[name] = max(importance[name], gain)
 
         dropped_name = importance.idxmin()

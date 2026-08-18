@@ -1,0 +1,526 @@
+================================================================================
+  01.8 — Feature Selection: rdmoldes 50-descriptor set — Workflow Diagram
+  src/feature_selection/feature_selection.py
+================================================================================
+
+GOAL
+────
+  Select a global (endpoint-agnostic) subset of the paper's 50 rdmoldes
+  descriptors (316 expanded features) for the RF/LightGBM/FCNN data-quantity
+  + noise study.
+
+  Scope: rdkit featureset only. FCFP4/ECFP4 fingerprints are untouched.
+
+  Granularity: every keep/drop decision is made per DESCRIPTOR (one of the 50
+  named things — 44 single-feature scalars + 6 multi-feature vector
+  descriptors, e.g. AUTOCORR2D -> 192 features), never per individual
+  expanded feature. See STEP 0b for why.
+
+
+INPUT
+─────
+  data/processed/section3_feat.pkl  (from 01.5)
+  feat[ep]['rdkit']  — (N, 316) rdmoldes features, per endpoint
+  ENDPOINTS_MODEL = HLM, MDR1, SOL, RLM  (PPB_H/PPB_R excluded — too sparse)
+
+  Deduplication (steps 1-5 only): many compounds are tested across more than
+  one of the 4 endpoints. Naively row-stacking all 4 endpoints' matrices to
+  study descriptor redundancy would count those molecules 2-4x, giving them
+  outsized influence on what "typical" redundancy looks like. So steps 1-5
+  (variance, MI, correlation, VIF) pool the 3509 UNIQUE molecules only,
+  deduplicated by canonical SMILES (X_all). Step 6 (RFE) and the R^2 audits
+  switch back to each endpoint's own full, non-deduplicated rows against its
+  own target — that's real modelling data, not a redundancy-estimation
+  concern, so there's no reason to throw duplicate rows away there.
+  Verified this mattered: with dedup, correlation-prune's R^2 cost dropped
+  from -0.023 to -0.014 vs baseline — duplicate-weighted estimates were
+  making descriptors look more redundant than they actually are.
+
+
+STEP 0 — Descriptor map + constant filter (Section 1)
+────────────────────────────────────────────────────────
+  rdmoldes_descriptor_map(): maps the 50 named descriptors to their column
+  ranges in the 316-feature rdmoldes() output (in the exact order rdmoldes()
+  concatenates them — 44 scalars, then PEOE_VSA(14)/SMR_VSA(10)/SlogP_VSA(12)
+  /MQNs(42)/CrippenDescriptors(2)/AUTOCORR2D(192)).
+
+  drop_constant_descriptors(X_all, descriptor_map, threshold=1e-8):
+    For each descriptor, np.var() across all 3509 molecules on every one of
+    its features. Dropped only if EVERY feature has variance <= threshold —
+    a descriptor with even one informative feature is kept whole (never
+    partially dropped).
+
+  Result: 50 -> 48 descriptors, 316 -> 314 features.
+  Dropped: CalcPBF, CalcSpherocityIndex — both are exactly 0.0 for every
+  molecule, a direct consequence of the flat z=0 conformers inherited from
+  the source SDFs (ADR-011), not an unrelated RDKit quirk:
+    PBF = mean deviation of atoms from their own best-fit plane, already
+          exactly the xy-plane when z=0
+    Spherocity Index = 3*lambda_min / (lambda1+lambda2+lambda3) over the
+          eigenvalues of the atomic coordinate covariance matrix — lambda_min
+          is exactly 0 when the z-column has zero variance
+  (CalcAsphericity/CalcEccentricity survive this filter — they use the
+  mass-weighted inertia tensor instead, whose two in-plane principal moments
+  stay generically distinct even for a flat molecule.)
+
+
+STEP 0b — Diagnostic: descriptors vs. raw features (Section 1b)
+───────────────────────────────────────────────────────────────
+  QUESTION: steps 1-5 below make every decision at the DESCRIPTOR level — a
+  192-feature block like AUTOCORR2D is kept or dropped whole, never split
+  across its own columns. Would selecting directly among the 316 raw feature
+  columns instead be better?
+
+  What raw-feature selection would look like: no PCA reduction (a raw scalar
+  column already IS its own single value), no CCA (with k=1 on both sides,
+  canonical correlation between two raw scalar columns is just |Pearson r|),
+  VIF operating on real uncompressed columns instead of a single PC1 proxy.
+  Strictly more expressive — 316 independent decisions instead of 50.
+
+  WHY NOT DONE — checked directly, not just argued:
+  mutual_info_regression() computed per raw column (no PCA, no descriptor
+  grouping) against all 4 endpoints, max MI across endpoints per column, top
+  30 raw features by that score inspected directly.
+
+  Result: a large fraction of the top 30 raw features come from AUTOCORR2D
+  alone — individually UNNAMED bins (e.g. "AUTOCORR2D position 47"), and not
+  clustered in a small interpretable sub-range (spread across the full
+  0-192 span, i.e. not "one informative sub-region of AUTOCORR2D" that a
+  chemist could point to and explain).
+
+  CONCLUSION: raw-feature-level selection would trade away interpretability
+  for a small amount of extra dimensionality precision — the output would be
+  dominated by scattered, anonymous AUTOCORR2D autocorrelation-lag bins
+  rather than named, chemist-readable descriptors like TPSA or PEOE_VSA.
+  Descriptor-level selection was kept as the primary methodology on that
+  basis: every step below (PCA/CCA/VIF/RFE) treats a named descriptor as the
+  atomic unit specifically to guarantee the final output is a short list of
+  physically-meaningful quantities, not a bag of fingerprint-like bin
+  indices with no story behind them. This diagnostic doesn't re-run — it's a
+  one-time justification for the whole notebook's design, not a step in the
+  pipeline itself.
+
+
+STEP 1 — Descriptor components (Section 2)
+──────────────────────────────────────────
+  MECHANISM — descriptor_component_matrix(X_all, kept_map, n_components=5):
+    For each of the 48 surviving descriptors:
+      1. StandardScaler().fit_transform() on just that descriptor's own
+         feature columns (z-score every feature to mean 0, std 1 — puts a
+         44-scalar family and a 0-1-bounded VSA family on comparable scales
+         before PCA, which is scale-sensitive)
+      2. PCA(n_components=min(5, n_features)).fit_transform()
+         -> scalar descriptors (44 of them) always reduce to k=1 (their own
+            z-scored value — PCA on a single column is a no-op beyond
+            standardizing)
+         -> vector descriptors reduce to up to 5 components: PEOE_VSA(14->5),
+            SMR_VSA(10->5), SlogP_VSA(12->5), MQNs(42->5), Crippen(2->2),
+            AUTOCORR2D(192->5)
+
+  WHY PCA HERE, AND WHY TOP-K NOT JUST PC1:
+    Steps 2 (MI) and 3 (correlation-prune) need to compare/score descriptors
+    of very different native widths (1 feature vs. 192 features) on equal
+    footing. Collapsing straight to a single PC1 per descriptor would judge
+    a 192-feature block's relevance/redundancy on one coincidentally
+    informative-or-not axis — real signal or real redundancy living in a
+    later component (PC2-PC5) would be invisible. Keeping the top 5
+    components per descriptor means correlation-prune and MI both "see" more
+    of what a wide descriptor actually contains, not just its dominant mode
+    of variation.
+    VIF is the one deliberate exception (Step 3) — see that step for why.
+
+  This step produces no drops by itself — it's the shared representation
+  that Steps 2 and 3 (MI, correlation-prune) both consume.
+
+
+STEP 2 — Mutual information (Section 2, same section as Step 1)
+──────────────────────────────────────────────────────────────────
+  MECHANISM — mutual_info_per_descriptor(component_map, y_by_endpoint):
+    For each descriptor, for each of the 4 endpoints:
+      mutual_info_regression(descriptor's component matrix, that endpoint's
+      target) -> one MI value per component -> take the MAX across that
+      descriptor's own components (so a descriptor isn't underrated just
+      because PC1 is uninformative while PC3 is not)
+    Then take the MAX across the 4 endpoints per descriptor — "a descriptor
+    is useful if it's useful for ANY endpoint," matching the project's
+    per-endpoint modelling decision (each endpoint trains its own model, so
+    a descriptor that only helps SOL shouldn't be penalized for not helping
+    HLM too).
+
+  Output: mi_max (one score per descriptor) — this is the score used as the
+  tiebreak in EVERY downstream elimination step (correlation-prune, VIF,
+  and to a lesser extent inspected alongside RFE). It is itself never used
+  to drop a descriptor directly — MI only ever breaks ties between
+  descriptors that some OTHER criterion (correlation, VIF, low gain) has
+  already flagged as expendable relative to another specific descriptor.
+
+
+STEP 3 — Correlation prune (Section 3)
+────────────────────────────────────────
+  MECHANISM — correlation_prune(component_map, mi_max, threshold=0.9):
+    For every pair of the 48 descriptors, compute the first canonical
+    correlation between their top-component sets:
+      _canonical_correlation(A, B):
+        k = min(A.n_components, B.n_components)
+        A_c, B_c = sklearn.cross_decomposition.CCA(n_components=k)
+                     .fit_transform(A, B)
+        return |corrcoef(A_c[:,0], B_c[:,0])|
+    Pairs with canonical correlation > 0.9 are sorted most-correlated first.
+    For each pair still both "alive," drop whichever has the LOWER mi_max,
+    keep the other. (Most-correlated-first ordering means the strongest
+    redundancies are resolved before weaker, possibly now-moot ones.)
+
+  WHY CCA, NOT PLAIN PEARSON ON PC1s:
+    PCA (Step 1) answers a WITHIN-descriptor question: "what are this
+    descriptor's own dominant axes of variation?" CCA answers a BETWEEN-
+    descriptor question: "how correlated are these two descriptors with
+    each other?" — using each one's full top-5 component set jointly,
+    rather than only comparing their first components to each other. It's
+    the standard generalization of Pearson correlation from two single
+    variables to two multi-dimensional variable sets: CCA finds the linear
+    combination of A's components and the linear combination of B's
+    components that correlate most strongly with each other, and that
+    correlation is what gets compared to the 0.9 threshold. Two descriptors
+    could have uncorrelated PC1s yet be almost entirely redundant once you
+    let PC2-PC5 combine — CCA catches that, plain PC1-to-PC1 Pearson
+    wouldn't.
+    (When both descriptors are scalars, k=1 on both sides and this
+    collapses to plain |Pearson r| — no information lost for the 44
+    single-feature descriptors, the generalization only matters for the 6
+    wide ones.)
+
+  KNOWN LIMITATION (explicitly documented, not silently accepted):
+    CCA only finds the strongest LINEAR combination correlation. Two
+    descriptors with genuine nonlinear (but real) dependence could pass this
+    check as "not redundant" when they actually are. Not fixed with a
+    nonlinear measure (e.g. distance correlation) because of the added
+    O(n^2) compute over ~3500 molecules AND because VIF (Step 4) and the
+    RFE/R^2 audit (Step 5) downstream both re-check whatever this step
+    decides against real model performance — a wrong call here isn't
+    silently trusted, it gets a second and third chance to be caught.
+
+  Result: 48 -> 27 descriptors, 314 -> 92 features.
+  Mean CV R^2: 0.4057 (was 0.4193 before any pruning) = 97% of ceiling.
+
+
+STEP 4 — VIF prune (Section 4)
+──────────────────────────────
+  MECHANISM — descriptor_pc1_matrix(component_map):
+    Unlike Steps 2-3, VIF collapses each descriptor down to ONLY its first
+    principal component (pc1_df: one column per descriptor).
+
+  WHY PC1-ONLY HERE, UNLIKE MI/CORRELATION:
+    VIF is inherently a single-variable-vs-the-rest statistic: VIF(X_i) =
+    1 / (1 - R^2) where R^2 comes from regressing X_i on every other
+    variable in the set. That definition doesn't generalize to "a
+    descriptor's whole 5-component block" without changing what VIF means —
+    there's no natural multivariate-vs-multivariate VIF. So this is the one
+    deliberate place PC1-only is kept rather than extended to top-k, and
+    it's a design choice, not an oversight.
+
+  MECHANISM — vif_prune(pc1_df, mi_max, threshold=5.0, tie_margin=0.05):
+    Iteratively:
+      1. variance_inflation_factor() (statsmodels) computed for every
+         currently-remaining descriptor's PC1, against all OTHER remaining
+         descriptors' PC1s at once (not just pairwise) — multicollinearity
+         against the whole surviving set, re-derived fresh each iteration
+         since VIF changes as descriptors leave.
+      2. If max VIF <= 5.0, stop.
+      3. Otherwise: descriptors within 5% (tie_margin) of the max VIF are
+         treated as tied; among those, drop the one with the LOWEST mi_max.
+      4. Repeat.
+    vif_mi_table() is also produced as a side-by-side VIF+MI snapshot of the
+    whole 27-descriptor candidate pool BEFORE any elimination — lets a human
+    sanity-check that the automated iterative process isn't about to cut
+    something that looks important on inspection.
+
+  NOTE — VIF can legitimately be `inf`: RDKit's ring-count descriptors
+  satisfy EXACT accounting identities (e.g. CalcNumAromaticRings =
+  CalcNumAromaticCarbocycles + CalcNumAromaticHeterocycles, verified
+  np.allclose=True on real data). When all three terms of such an identity
+  are still in the pool, the third is perfectly reconstructable (R^2=1
+  exactly) -> VIF=inf. This is VIF correctly identifying the most redundant
+  possible descriptor, not a numerical bug.
+
+  Result: 27 -> 16 descriptors, 92 -> 40 features.
+  Mean CV R^2: 0.3824 (was 0.4057 after correlation-prune) = 91% of ceiling.
+  16 survivors: CalcTPSA, CalcNumLipinskiHBD, CalcNumHeteroatoms,
+  CalcNumAmideBonds, CalcNumAliphaticHeterocycles, CalcNumAromaticCarbocycles,
+  CalcNumAromaticRings, CalcNumSaturatedRings, CalcNumRotatableBonds,
+  CalcChi3v, PEOE_VSA, SlogP_VSA, CalcEccentricity, CalcInertialShapeFactor,
+  CalcPMI1, CalcPMI3 (the last 4 are ADR-011 flat-2D-geometry descriptors —
+  none of them make it past Step 5).
+
+
+STEP 5 — LightGBM recursive descriptor elimination (Section 5)
+───────────────────────────────────────────────────────────────
+  MECHANISM — run_descriptor_rfe(X_by_endpoint, y_by_endpoint,
+                                  rfe_descriptor_map, min_descriptors=1,
+                                  cv=5):
+    Operates on REAL features now, not PCA components — each endpoint's own
+    full (non-deduplicated) rows, using the 40 real rdmoldes columns of the
+    16 surviving descriptors.
+    Loop, while len(remaining) > min_descriptors:
+      1. Fit ONE LGBMRegressor per endpoint (n_estimators=200,
+         importance_type='gain') on that endpoint's own X/y for the
+         currently-remaining features.
+      2. 5-fold CV R^2 (KFold, shuffle, random_state=42) logged for THIS
+         step's descriptor set, per endpoint and averaged -> this is the
+         trace point plotted in Step 6, BEFORE any removal this round.
+      3. Importance per descriptor: take each descriptor's features' max
+         gain-importance from that endpoint's fitted model, then MAX across
+         the 4 endpoints (again: "useful for ANY endpoint" survives) ->
+         one importance score per remaining descriptor.
+      4. Drop the descriptor with the LOWEST importance score. Repeat.
+    Runs all the way to 1 descriptor (MIN_DESCRIPTORS=1) rather than
+    stopping at an arbitrary floor — earlier runs used MIN_BLOCKS=10 or
+    min_descriptors=3 with no data-driven justification, and would have
+    missed the second, much larger cliff later in the trace (see Step 6).
+
+  GAIN-IMPORTANCE, PRECISELY:
+    "Gain" = the total reduction in the model's loss function attributable
+    to a feature, summed over every split in every tree that uses it — a
+    measure of how much a feature actually improved predictions, not how
+    often it happened to be used. LightGBM's LGBMRegressor computes this
+    internally (booster.feature_importance(importance_type='gain')) whenever
+    importance_type='gain' is passed at construction; feature_importances_
+    then returns that array. Contrast with 'split' (scikit-learn/LightGBM's
+    DEFAULT if importance_type isn't set): a raw count of how many times a
+    feature was used as a split point anywhere in the ensemble, regardless
+    of how much any individual split actually helped.
+
+  *** BUG FOUND AND FIXED MID-PROJECT ***
+    run_descriptor_rfe originally constructed LGBMRegressor WITHOUT
+    importance_type='gain' — every surrounding comment/docstring described
+    gain-importance, but the code was silently using scikit-learn's
+    default, which for LGBMRegressor is 'split'-count.
+    CAUGHT BY: Section 8's shadowing diagnostic (see Step 5b below) —
+    CalcEccentricity had EXACTLY ZERO importance in the full 316-feature
+    model across all 4 endpoints, despite being nearly rank-identical
+    (Spearman rho=1.0) to CalcNPR2, which had real nonzero importance.
+    Exactly the signature of split-count (a feature never chosen as a split
+    point gets exactly 0, gain or no gain) being mistaken for a
+    gain-importance finding.
+    FIXED: importance_type='gain' set explicitly in run_descriptor_rfe's
+    LGBMRegressor construction (feature_selection.py line ~306), whole
+    pipeline re-run top to bottom. This CHANGED the final 5-descriptor
+    selection: CalcEccentricity/CalcPMI3 (ADR-011 flat-geometry descriptors)
+    dropped out, replaced by CalcNumAromaticCarbocycles/CalcChi3v.
+
+  CV_FOLDS = 5, not 3: an earlier run with 3-fold gave visibly noisy,
+  non-monotonic step-to-step swings (values zigzagging as descriptors were
+  removed) inconsistent with a real information-loss trend — 5-fold trades
+  some speed for a cleaner trace, which matters because Step 6 reads this
+  trace by eye.
+
+  Result: 16 -> 1 descriptor, full trace logged (16 steps).
+
+
+STEP 5b — Diagnostic: gain-importance shadowing/masking (Section 8)
+───────────────────────────────────────────────────────────────────
+  QUESTION: RFE trusts gain-importance to decide what's safe to drop. If two
+  descriptors are redundant in a way TREES can't see (a tree only ever asks
+  "which side of a threshold"), RFE could keep the wrong one purely by
+  chance of elimination order — without it ever showing up as an R^2 drop,
+  since the model still has an informationally-equivalent descriptor
+  available.
+
+  THREE CHECKS, run against the whole Step-4 candidate pool (not hardcoded
+  to one pair):
+    1. Rank-correlation redundancy CCA/VIF may have missed: Spearman rho
+       between every pair of survivors/dropped-descriptors' PC1s — CCA/VIF
+       are both fundamentally LINEAR checks; two descriptors can be only
+       moderately linearly correlated (canonical r < 0.9, passing both
+       checks) while being EXACTLY rank-identical (rho=1.0) — invisible to
+       any tree model, even though a smooth model like FCNN could still
+       tell them apart. (This is exactly how the gain-vs-split bug above
+       was caught: CalcEccentricity vs CalcNPR2, rho=1.0.)
+    2. RF vs. LightGBM importance divergence: do the two tree ensembles even
+       agree on what matters, in the full 316-feature model? Checked as a
+       sanity bound on how much to trust LightGBM-only RFE as "what these
+       models find important" in general (FCNN excluded — no native
+       importance metric without a separate permutation-importance pass).
+    3. Direct swap test: for any Step-5-selected descriptor with a
+       near-rank-identical relative among the dropped descriptors, swap one
+       for the other and re-measure CV R^2. Near-zero delta = the
+       descriptor's presence in the final set is substitutable, not
+       uniquely load-bearing.
+
+  RESULT after the gain-importance fix: the severe case (CalcEccentricity /
+  CalcNPR2) is gone — neither is in the corrected final 5. One milder
+  near-rank-identical pair remains among the final descriptors (swap delta
+  -0.004, minor) — expected residual risk, not alarming: CCA/VIF are still
+  linear checks, so some tree-invisible-but-real redundancy slipping past
+  them on every run is the expected outcome this diagnostic exists to catch,
+  not evidence of a new bug.
+
+
+STEP 6 — Inspect the trace, pick a cutoff (Section 6) -> Figure
+──────────────────────────────────────────────────────────────────
+  PLOT (section_fs_rfe_trace.png): combines the constant-filter baseline
+  (48 desc), the correlation-prune stage (27 desc), and the FULL RFE trace
+  (16 -> 1 desc) into one continuous curve: mean CV R^2 (y) vs. number of
+  descriptors remaining (x, inverted so it reads left-to-right as pruning
+  progresses).
+
+  HOW THE CUTOFF WAS PICKED — by eye, on the trace, using two features of
+  the curve:
+    (a) From 16 down to 5 descriptors: R^2 declines gently and roughly
+        monotonically, each step costing <= 0.008 R^2 — normal, expected
+        information loss as weak descriptors leave.
+    (b) At 5 -> 4 descriptors: a -0.061 drop (dropping SlogP_VSA) — roughly
+        8x any single step in the 16->5 range. This is the first REAL elbow.
+    SELECTED_N_DESCRIPTORS = 5 — the smallest descriptor count BEFORE this
+    first cliff.
+    (Continuing the trace further reveals a SECOND, much larger cliff at
+    3 -> 2 descriptors: -0.221 (dropping PEOE_VSA) — the single biggest drop
+    anywhere in the whole trace. Running to min_descriptors=1 rather than
+    stopping early was necessary specifically to see this second cliff, not
+    just the first — see Step 7 for why RFE's picks in this N<=5 tail
+    region are not actually trustworthy despite this elbow-picking logic
+    looking reasonable in isolation.)
+
+  Final 5-descriptor selection (selected_descriptors.json): CalcTPSA,
+  CalcNumAromaticCarbocycles, CalcChi3v, PEOE_VSA, SlogP_VSA.
+  Mean CV R^2: 0.3555 (was 0.3824 after VIF) = 85% of ceiling.
+  16 -> 5 descriptors, 40 -> 29 features.
+
+
+STEP 7 — Standalone contribution: was RFE's tail-end order reliable?
+       (Section 8b, feeds the bar-plot numbers directly)
+──────────────────────────────────────────────────────────────────────
+  DIFFERENT QUESTION FROM STEP 5b: Step 5b asked whether a SURVIVOR is
+  redundant with something already dropped. This step asks: once RFE got
+  down to its last few descriptors, did gain-importance keep dropping the
+  LEAST valuable one — or just the one LightGBM happened to lean on least
+  AT THAT PARTICULAR STEP, given whatever else was already in the model?
+
+  MECHANISM — evaluate_descriptor_set() called once per descriptor ALONE
+  (a single-descriptor model, no RFE, no other descriptors present):
+    For each of the 5 final descriptors: 5-fold CV R^2 of a LightGBM
+    trained on JUST that descriptor's own real features, per endpoint,
+    averaged.
+    standalone_r2 results (mean CV R^2, solo):
+      PEOE_VSA                     0.265   <- strongest alone
+      SlogP_VSA                    0.255   <- 2nd strongest alone
+      CalcNumAromaticCarbocycles   ~0.06-ish (weak)
+      CalcTPSA                     0.038
+      CalcChi3v                    0.040   <- weakest alone
+
+  THIS IS HOW "TOP-N BY SOLO R^2" IS DEFINED for the bar-plot's last two
+  bars: ranked_by_standalone = descriptors sorted by this solo score,
+  descending. Top-2 by solo R^2 = {PEOE_VSA, SlogP_VSA}. Top-3 adds
+  whichever standalone-ranked descriptor is 3rd (CalcNumAromaticCarbocycles).
+  These sets are NOT taken from any RFE trace step — they're built directly
+  from the standalone ranking, then evaluate_descriptor_set() is re-run on
+  that exact N-descriptor set to get its own real (not summed-from-solo)
+  joint CV R^2 — descriptors together are not additive, so this joint
+  re-evaluation is what actually produced the 0.3545 (N=3) and 0.3458 (N=2)
+  numbers in the bar plot, not an arithmetic combination of the solo scores.
+
+  DIRECT COMPARISON — RFE's own trace step at N=4/3/2 vs. the top-N-by-
+  standalone set of the same size, both evaluated the same way:
+                  RFE's own picks          Top-N by standalone R^2
+    N=4    (drops SlogP_VSA first)    vs   keeps the two VSA descriptors
+    N=3    (still carries              vs   {PEOE_VSA, SlogP_VSA,
+            CalcEccentricity/PMI3           CalcNumAromaticCarbocycles}
+            under the pre-fix run)          R^2=0.3545 (85%)
+    N=2    {CalcTPSA, CalcChi3v}       vs   {PEOE_VSA, SlogP_VSA}
+           R^2=0.066 (barely above         R^2=0.3458 (82%)
+           noise)
+  Standalone-ranked beats RFE's own trace step by 0.043-0.279 R^2 at every
+  N checked, worst at N=2.
+
+  WHY THIS HAPPENS (not a metric-choice bug, a structural property of
+  greedy marginal elimination): gain-importance is a MARGINAL measure — how
+  much a descriptor helps GIVEN whatever else is already in the model.
+  PEOE_VSA and SlogP_VSA both encode overlapping information (surface area
+  partitioned by a physicochemical property — charge for one, logP
+  contribution for the other). Once one is in the model, gain-importance
+  undersells how much the OTHER would matter on its own if the first were
+  removed — so RFE's greedy path drops SlogP_VSA at 5->4 and PEOE_VSA at
+  3->2 (the two individually-strongest descriptors in the whole pool),
+  BEFORE dropping CalcTPSA/CalcChi3v (the two individually-weakest), which
+  are what's left standing at N=1. Once you're down to a handful of
+  descriptors that are individually strong but partially correlated with
+  each other, marginal importance is the wrong lens for "what's safe to
+  cut" — RFE's broad pruning (48->16->5) stays trustworthy throughout (every
+  step there removes descriptors that are genuinely weak, not just
+  currently shadowed); the failure mode is specific to this N<=5 tail where
+  every survivor looks similarly strong to a marginal metric.
+
+
+STEP 8 — Takeaway table + bar plot (Section 9, 9b) -> Figure
+─────────────────────────────────────────────────────────────
+  The bar plot (section_fs_variance_explained_by_stage.png) draws exactly
+  the 6 rows below — this is where every one of its bars/numbers comes from:
+
+  | Stage                     | Descriptors | Features | Mean CV R^2 | % ceiling |
+  |----------------------------|-----|-----|--------|------|
+  | No pruning (post-constant) | 48  | 314 | 0.4193 | 100% |  <- Step 0
+  | Post correlation-prune CCA | 27  | 92  | 0.4057 | 97%  |  <- Step 3
+  | Post VIF-prune             | 16  | 40  | 0.3824 | 91%  |  <- Step 4
+  | RFE elbow, N=5             | 5   | 29  | 0.3556 | 85%  |  <- Step 6
+  | Top-3 by solo R^2          | 3   | 27  | 0.3545 | 85%  |  <- Step 7
+  | Top-2 by solo R^2 (RECO)   | 2   | 26  | 0.3458 | 82%  |  <- Step 7
+
+  ceiling = the "No pruning" row's mean_cv_r2 (0.4193); every % is
+  row.mean_cv_r2 / ceiling. n_features per row = sum of descriptor_map
+  feature counts for whichever descriptors are in that row's set (NOT
+  re-derived from any model, just the known layout from Step 0).
+  This table -> DataFrame -> data/processed/section_fs_stage_summary.csv
+  -> bar chart, one bar per row, annotated with (features, descriptors) and
+  the %-of-ceiling printed inside each bar.
+
+  RECOMMENDATION: N=2 (PEOE_VSA + SlogP_VSA). Not a hand-wavy compromise —
+  the actual point of diminishing returns: standalone-ranked (doesn't
+  inherit RFE's tail-end unreliability from Step 7), 96% of what the full
+  16->5 RFE pipeline achieves (0.3458 vs 0.3556) using 26 of the 5-descriptor
+  set's 29 features, and every descriptor added past it (by either ranking
+  method) buys single-digit-R^2-point returns at best. RFE's own 5-descriptor
+  selected_descriptors.json remains available as a defensible alternative if
+  a downstream model can spare the extra 3 descriptors for +5 ceiling points.
+
+  Physical meaning:
+    PEOE_VSA  — van der Waals surface area binned by Gasteiger partial
+                charge (14 bins): how much surface is electron-rich vs.
+                electron-poor — polarity / H-bonding character.
+    SlogP_VSA — same surface-area partitioning, binned by each atom's
+                Crippen logP contribution (12 bins): how much surface is
+                lipophilic vs. not, and where.
+    Together: a compact "polar surface vs. lipophilic surface" fingerprint —
+    directly mechanistic for all 4 modelled endpoints (HLM/RLM metabolic
+    clearance, MDR1 efflux recognition, aqueous solubility are all
+    textbook lipophilicity/polarity-governed ADME properties).
+
+
+STEP 9 — Diagnostic: does real 3D geometry matter? (Section 7, ADR-011)
+──────────────────────────────────────────────────────────────────────────
+  Independent of the main funnel — checks whether the flat-2D-geometry
+  issue (ADR-011: 11 of the 50 descriptors are computed on z=0 coordinates,
+  not real conformers) is actually costing anything.
+  Embeds an ENSEMBLE of conformers per molecule (ETKDGv3, fixed seed),
+  computes the 11 affected descriptors on the lowest-MMFF-energy conformer
+  of each, splices real values into the existing matrices in place of the
+  flat ones, re-runs evaluate_descriptor_set() at two levels: the 48-desc.
+  baseline, and the final 5-descriptor selection.
+  RESULT: delta = 0.0000 at the final-5 level — none of the 11 affected
+  descriptors survive to the corrected final 5 anymore (post gain-importance
+  fix), so this is a confirmed no-op there. Still a valid, independent check
+  on the wider 48-descriptor pool, and left in place as the correct thing
+  to check given whatever the current selection happens to be.
+
+
+PENDING / NOT DONE
+───────────────────
+  Per-endpoint re-selection: current selection is global across all 4
+  endpoints. Only worth revisiting if one endpoint's downstream model
+  performs significantly worse than the others post-selection (SOL is
+  already the weakest at the current 5-descriptor cutoff, R^2=0.272 — the
+  natural first candidate to check, per src/feature_selection/CLAUDE.md).
+  A full pipeline re-run on real-conformer values for all 11 ADR-011-
+  affected descriptors (Step 9 only spliced values into the EXISTING
+  selection/baseline — whether Steps 3-5's decisions themselves would
+  change on real-conformer data was judged unlikely but not tested).
+
+================================================================================

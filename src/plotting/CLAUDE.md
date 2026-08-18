@@ -23,8 +23,9 @@ Stateless — all functions accept DataFrames and return Figure objects; no modu
 
 | Action | Signature | Description |
 |--------|-----------|-------------|
-| `endpoint_distributions` | `(df, endpoint_cols, figsize=(14, 8)) → Figure` | Histogram + KDE grid for each endpoint column; grid dimensions computed from number of columns |
+| `endpoint_distributions` | `(df, endpoint_cols, figsize=(14, 8)) → Figure` | Histogram + KDE grid for each endpoint column; grid dimensions computed from number of columns; subplot titles use `ENDPOINT_LABELS` |
 | `pred_vs_actual_grid` | `(preds_dict, title="", figsize=None) → Figure` | Scatter grid of predicted vs actual per model; `preds_dict` is `{model_name: (y_test, y_pred)}`; annotates each panel with R² |
+| `ENDPOINT_LABELS` | `dict[str, str]` | Endpoint code → display label with units, e.g. `'HLM': 'HLM CLint (log$_{10}$ mL/min/kg)'`. All six ADME endpoints are log10-transformed in the raw data (DECISIONS.md), so every label describes the untransformed assay unit inside the log. Notebooks doing their own plotting (not via `endpoint_distributions`) should `from src.plotting import ENDPOINT_LABELS` and use `ENDPOINT_LABELS.get(ep, ep)` as a title/axis-label fallback. Wired into `01.6_adme_paper_recreation_results.ipynb`, `03_adme_data_quantity.ipynb`, `04_adme_noise.ipynb`. |
 
 ### Invariants
 

@@ -1,15 +1,9 @@
 {
   "selected_descriptors": [
-    "CalcTPSA",
-    "CalcNumAromaticCarbocycles",
-    "CalcChi3v",
     "PEOE_VSA",
     "SlogP_VSA"
   ],
   "selected_features": [
-    0,
-    6,
-    28,
     44,
     45,
     46,
@@ -37,12 +31,12 @@
     78,
     79
   ],
-  "cv_score_mean": 0.3606483773464999,
+  "cv_score_mean": 0.34582368864495283,
   "cv_score_by_endpoint": {
-    "HLM": 0.3555228082329162,
-    "MDR1": 0.4528930035631899,
-    "SOL": 0.27189075156088527,
-    "RLM": 0.36228694602900813
+    "HLM": 0.34703957425663623,
+    "MDR1": 0.4316644607368523,
+    "SOL": 0.24272911378543327,
+    "RLM": 0.36186160580088955
   },
   "baseline_cv_score_mean": 0.41932890061130307,
   "post_cca_correlation_prune_cv_score_mean": 0.405669333262216,

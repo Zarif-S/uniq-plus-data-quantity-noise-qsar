@@ -1,0 +1,5 @@
+n_descriptors,rfe_own_set,rfe_own_r2,topn_solo_set (top-N by standalone R^2),topn_solo_r2,delta
+5,"['CalcTPSA', 'CalcNumAromaticCarbocycles', 'CalcChi3v', 'PEOE_VSA', 'SlogP_VSA']",0.3606483773464999,"['PEOE_VSA', 'SlogP_VSA', 'CalcNumAromaticCarbocycles', 'CalcNumAromaticRings', 'CalcNumHeteroatoms']",0.3481662344702171,-0.012482142876282798
+4,"['CalcTPSA', 'CalcChi3v', 'PEOE_VSA', 'SlogP_VSA']",0.35896060702825233,"['PEOE_VSA', 'SlogP_VSA', 'CalcNumAromaticCarbocycles', 'CalcNumAromaticRings']",0.3433147093160075,-0.01564589771224484
+3,"['CalcChi3v', 'PEOE_VSA', 'SlogP_VSA']",0.3436561837569798,"['PEOE_VSA', 'SlogP_VSA', 'CalcNumAromaticCarbocycles']",0.3486576581659216,0.005001474408941775
+2,"['PEOE_VSA', 'SlogP_VSA']",0.34582368864495283,"['PEOE_VSA', 'SlogP_VSA']",0.34582368864495283,0.0

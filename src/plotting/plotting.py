@@ -7,6 +7,18 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from sklearn.metrics import r2_score
 
+# All six ADME endpoint values are log10-transformed in the raw data (see DECISIONS.md —
+# "y values never scaled, already log-transformed in raw data"); units below describe the
+# untransformed assay quantity inside the log.
+ENDPOINT_LABELS = {
+    "HLM": "HLM CLint (log$_{10}$ mL/min/kg)",
+    "RLM": "RLM CLint (log$_{10}$ mL/min/kg)",
+    "MDR1": "MDR1 efflux ratio (log$_{10}$ ER)",
+    "SOL": "Solubility, pH 6.8 (log$_{10}$ µg/mL)",
+    "PPB_H": "PPB, human (log$_{10}$ % unbound)",
+    "PPB_R": "PPB, rat (log$_{10}$ % unbound)",
+}
+
 
 def endpoint_distributions(df, endpoint_cols, figsize=(14, 8)):
     """Histogram + KDE grid for a list of endpoint columns. Returns matplotlib Figure.
@@ -33,7 +45,7 @@ def endpoint_distributions(df, endpoint_cols, figsize=(14, 8)):
             x = np.linspace(data.min(), data.max(), 300)
             ax.plot(x, kde(x) * len(data) * bin_width, color="darkblue", linewidth=2)
 
-        ax.set_title(col, fontsize=10, pad=6)
+        ax.set_title(ENDPOINT_LABELS.get(col, col), fontsize=10, pad=6)
         ax.set_xlabel("Value")
         ax.set_ylabel("Count")
         ax.tick_params(labelsize=8)

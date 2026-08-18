@@ -1,0 +1,16 @@
+%%{init: {'flowchart': {'curve': 'linear'}}}%%
+flowchart TB
+    A["Fang et al. 2023\nComputational-ADME (Biogen public)\n · 3,521 compounds
+    · 4 Endpoints"] --> A0["EDA\n• Endpoint distributions (Raw + KDE)
+    • Dice vs Tanimoto similarity"]
+    A0 -- "Check source code \n+\nRe-read paper\n" --> B["Reimplementation"]
+    B -- "Same data, splits, models, features" --> C{"Reproduced results\nmatch paper?"}
+    C -- "Validated\n(Pearson r Boxplots, Heatmaps, DoA-binned MAE, Hyperparameter Tuning)" --> D["Extensions"]
+    C -- Discrepancy found --> B2["Resolve against source code + paper"]
+    B2 --> C
+    D --> D1["Featuresets: ·ECFP4\n·Hybrid-ECFP4-RDKit(316)"] & D2["MPNN variants:\nMPNN3 · MPNN4\n(normalization/featureset swaps"]
+    D1 --> S["Feature selection\n Descriptor-level pipeline on\nthe 316-feature RDKit2D set"]
+    D2 --> E["Statistical validation\nRepeatedKFold CV (random split) extended to FCNN, MPNN (paper: classical models only)"]
+    S --> E
+    E --> F["Additional experiments"]
+    F --> F1["Data quantity\nLearning curve: (13 fractions × 15 seeds)"]
