@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from rdkit import Chem
 from rdkit.Chem import rdFingerprintGenerator, DataStructs
+from sklearn.metrics import r2_score
 from useful_rdkit_utils import max_possible_correlation
 
 
@@ -30,17 +31,33 @@ def missing_value_report(df, endpoint_cols):
 FOLD_LEVELS = [2, 3, 5, 10]
 
 
-def max_corr_report(df, endpoint_cols, fold_levels=None, cycles=1000):
+def _r2_score_method(y_true, y_pred):
+    """Adapt sklearn's r2_score to the (score, ...) tuple contract max_possible_correlation expects."""
+    return (r2_score(y_true, y_pred), None)
+
+
+def max_corr_report(df, endpoint_cols, fold_levels=None, cycles=1000, metric="pearson_r2"):
     """Upper bound on achievable R² per endpoint at multiple assay noise levels.
 
     Follows Pat Walters' approach (Brown, Muchmore & Hajduk noise model): for each
     fold-change level, adds Gaussian noise of std=log10(fold) to the endpoint values
-    and computes mean Pearson r over `cycles` iterations, then squares to give R².
+    and compares the noisy realization against the original over `cycles` iterations.
+
+    metric="pearson_r2" (default): mean Pearson r across cycles, then squared — matches
+    the original Brown/Muchmore/Hajduk reproducibility framing (symmetric, calibration-blind;
+    two noisy views of the same underlying quantity, neither privileged as "truth").
+    metric="r2": mean sklearn r2_score(original, noisy) across cycles, used as-is (already
+    an R² value, not squared) — asymmetric and calibration-sensitive, for overlaying against
+    model curves that are themselves scored with r2_score (e.g. the systematic_bias noise
+    panel in 04_adme_noise.ipynb, where calibration damage is the point being measured).
 
     fold_levels: list of fold-change magnitudes to evaluate (default: [2, 3, 5, 10]).
     Returns a DataFrame with n (valid rows) + one R² column per fold level.
     """
     import numpy as np
+
+    if metric not in ("pearson_r2", "r2"):
+        raise ValueError(f"Unknown metric: {metric!r} (expected 'pearson_r2' or 'r2')")
 
     if fold_levels is None:
         fold_levels = FOLD_LEVELS
@@ -55,8 +72,13 @@ def max_corr_report(df, endpoint_cols, fold_levels=None, cycles=1000):
         else:
             vals_list = vals.tolist()
             for fold in fold_levels:
-                r = max_possible_correlation(vals_list, error=np.log10(fold), cycles=cycles)
-                row[f"{fold}-Fold"] = r ** 2
+                if metric == "pearson_r2":
+                    r = max_possible_correlation(vals_list, error=np.log10(fold), cycles=cycles)
+                    row[f"{fold}-Fold"] = r ** 2
+                else:
+                    row[f"{fold}-Fold"] = max_possible_correlation(
+                        vals_list, error=np.log10(fold), cycles=cycles, method=_r2_score_method,
+                    )
         rows.append(row)
     return pd.DataFrame(rows).set_index("endpoint")
 

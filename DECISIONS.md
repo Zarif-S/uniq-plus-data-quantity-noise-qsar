@@ -232,7 +232,7 @@ Secondary reasons:
 
 ## ADR-005 — Label Noise Model Definitions
 
-**Date**: 2026-07-21 (levels amended 2026-08-11; Gaussian/bias reparameterized to fold-error 2026-08-13)
+**Date**: 2026-07-21 (levels amended 2026-08-11; Gaussian/bias reparameterized to fold-error 2026-08-13; ceiling metric corrected to `r2_score` throughout 2026-08-25)
 **Status**: Decided
 **Decider**: Zarif
 
@@ -241,6 +241,14 @@ Secondary reasons:
 ### Context
 
 Three types of label noise are injected into `y_train` for the noise-injection experiments (`04_adme_noise.ipynb`), following the taxonomy of Landrum & Riniker. Each noise type models a distinct real-world assay imperfection. The exact formulations need to be pinned to avoid ambiguity in the writeup.
+
+**The `max_corr_report` ceiling now uses `r2_score` throughout, matching the model curves it's overlaid on (amended 2026-08-25).** The ceiling overlay (`04_adme_noise.ipynb` §3.5) was originally always squared-mean-Pearson-r (`max_possible_correlation`'s native output), plotted against model curves scored with sklearn's `r2_score` — two different formulas sharing one axis, an inconsistency worth fixing.
+
+**Correction, same day**: an intermediate version of this fix split the metric by noise type — Pearson r² for `gaussian` (justified as a "symmetric, calibration-blind reproducibility question, since both compared vectors are just noisy views of the same quantity"), `r2_score` for `systematic_bias` (justified by that noise type's constant label shift, which Pearson r² would under-penalize). That symmetry argument for `gaussian` didn't hold up: `max_corr_report`'s `vals` is the real recorded dataset value, not itself a noisy quantity — only `noisy_vals` (`vals` plus one simulated draw) is synthetic. The two are not interchangeable, so there was no principled reason to keep `gaussian` on a different formula from the rest of the notebook. **Final decision**: `metric='r2'` for both `gaussian` and `systematic_bias` (`gross_errors` has no ceiling overlay, unchanged). This has negligible numeric effect on `gaussian` specifically — `r2_score` and Pearson r² only diverge meaningfully when there's a systematic offset between the two vectors, which `gaussian` noise (zero-mean) doesn't introduce — while keeping one metric formula across the entire figure and matching `evaluate_model`'s `R2` column used everywhere else in the project, with no need for a separate `Pearson**2` column on any panel.
+
+`max_corr_report` (`src/eda/eda.py`) implements this via a `metric='pearson_r2'|'r2'` argument, defaulting to `'pearson_r2'` (the package's native behavior, preserved for any other caller) — `04_adme_noise.ipynb` explicitly passes `metric='r2'`. `metric='r2'` uses sklearn `r2_score(vals, noisy_vals)` averaged over cycles directly (already an R² value, not squared again), which also happens to match Pat Walters' original raw notebook (`maximum_correlation.ipynb`, `r2_score` per cycle) rather than the later `useful_rdkit_utils` package's Pearson-r default.
+
+This is a deliberate departure from Pat Walters' original notebook/package, which uses Pearson r throughout for a single reproducibility question. Implemented via a `metric` argument on `max_corr_report` (`src/eda/eda.py`), defaulting to `'pearson_r2'` (existing callers unaffected).
 
 **Levels are coarse-scan anchors, not final reported values** (amended 2026-08-11): the levels below are used as a coarse scan (mirrors `03_adme_data_quantity.ipynb`'s fraction methodology) — run the full grid at low seed count, use a fixed-threshold pass to locate each `(endpoint, model, noise_type)` curve's collapse point empirically, then zoom in below the knee with a finer grid and more seeds for the reported curves.
 
