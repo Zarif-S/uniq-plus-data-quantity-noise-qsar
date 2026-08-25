@@ -59,4 +59,19 @@ Also update the `agentic-coding-framework` CLAUDE.md template to include: "⚠ V
 
 ---
 
-**Last Updated**: 2026-07-22
+### §5.7 Table 2 won't numerically match Fang et al.'s Table 2 — three real, checked causes, none of which threaten the paper's qualitative claims
+
+**Lesson**: When a recreation's numbers don't land on the original paper's published values, resist assuming your own pipeline is wrong or that the paper's claims are undermined — trace each candidate cause individually against the paper's actual public code (`ADME_ML_public.py`, Computational-ADME repo) before concluding either way. Investigated 2026-08-19–24; three causes confirmed, one theory tested and discarded.
+
+**Confirmed causes** (see `DECISIONS.md` ADR-007 for full detail):
+1. **RF/LightGBM unseeded in the paper's own script** — `RandomForestRegressor(...)` and `lgb.LGBMRegressor(...)` are instantiated with no `random_state`/`seed` at all (our `src/models/paper_models.py` passes one explicitly). MPNN's ChemProp invocation appears to have the same gap. This parallels the FCNN `seed=5758` bug already logged (wrong kwarg name, silently dropped by DeepChem 2.1.0) — different mechanism (omission vs. typo), same effect: the paper's own published numbers are one non-reproducible draw, not a fixed target.
+2. **Dedup-key mismatch** — our loader does `drop_duplicates('can_smi')` post-standardization (merges two different vendor IDs that standardize to the same structure); the paper's script dedupes via a `dict` keyed on `molName`, which only collapses same-named rows and never checks structural identity across different IDs. Produces small compound-count deltas (e.g. HLM 3086 vs. published 3087) that are NOT something the paper's script would also produce — the earlier assumption that "the paper would have hit the same loss" was wrong and has been corrected in `DECISIONS.md`.
+3. **Single-draw split variance, not a seeding bug** — when comparing CV_r vs. test_r across all 4 endpoints (HLM/MDR1/SOL/RLM) × both sources (paper's Table 2 vs. ours), the paper's HLM column was the one outlier cell (CV_r beats test_r by +0.01 to +0.05 across all 4 models, unlike every other endpoint in both tables). The split (`shuffle(42)` + `train_test_split(random_state=84)`) *is* fully seeded and deterministic — but each endpoint has a different compound list, so a fixed seed still produces an independent one-off partition per endpoint. One random 80/20 draw (vs. the 15-fold CV mean) is expected to occasionally land on an easier/harder-than-average test slice purely by chance — no code fix would eliminate this, it's inherent to taking only one split per endpoint.
+
+**Theory tested and discarded**: initially suspected our shared cross-endpoint `df_sdf` union (built for PPB/ChEMBL augmentation reuse) put molecules into `shuffle(42)` in a different order than the paper's per-endpoint processing, and that this structural difference explained the mismatch. The paper repo's `ML/` folder does contain separate per-endpoint SDFs (`ADME_HLM.sdf`, `ADME_MDR1_ER.sdf`, etc.), which reopens this as *possible*, but no evidence was found strong enough to confirm it drives the observed pattern — the split-variance explanation above fits the data better and needed no unverified assumption about their internal file structure.
+
+**Why it doesn't matter for the write-up**: every one of the paper's qualitative claims (non-RF > RF, hybrid features > single representations, MPNN2/FCNN best-in-class, tuning marginal) is a *within-split, relative* comparison — models are ranked against each other on the same partition. Both cause #1 and #3 apply near-uniformly across models evaluated on the same split, so they wash out of relative comparisons even though they show up clearly in absolute value comparisons against the published table. Confirmed the user's own recreation reproduces the same relative ordering.
+
+---
+
+**Last Updated**: 2026-08-24
