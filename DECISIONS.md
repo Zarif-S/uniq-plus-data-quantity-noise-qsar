@@ -827,4 +827,37 @@ across `rdkit`/`hybrid`/`hybrid_ecfp4` × the 4 modelling endpoints, and re-diff
 
 ---
 
+## ADR-012 — FCNN Tuning Uses CV Pearson r, Not R² (Inconsistent With Classical Models, Currently Inert)
+
+**Date**: 2026-08-27
+**Status**: Decided (no code change made)
+**Decider**: Zarif
+
+---
+
+### Context
+
+`tune_paper_model()` (RF/SVM/XGBoost/LightGBM/Lasso) selects hyperparameters via `GridSearchCV(scoring="r2")`, matching the paper's own staged-tuning code exactly (see ADR-007). `tune_fcnn_architecture()` (`src/models/paper_models.py:175-194`) instead selects the winning architecture (of the 5 `FCNN_ARCHITECTURES` presets) via mean CV **Pearson r** (`RepeatedKFold` + `_pearson_scorer`), matching the scorer used by `model_validation()`'s final reporting instead. The paper's own script has no equivalent FCNN architecture-selection code to replicate, so this choice wasn't paper-fidelity-constrained the way the classical models' tuning was.
+
+This is a genuine inconsistency: R² and Pearson r diverge whenever predictions are correlated but miscalibrated (Pearson r is invariant to affine transforms of predictions — scale/offset bias — while R² penalizes them directly). Selecting FCNN's architecture on the same metric it's later judged on gives it a structural edge the classical models don't get, since they're judged on Pearson r after being tuned on the stricter R² proxy.
+
+---
+
+### Decision
+
+**Leave the code as-is for now; treat this as a documented limitation, not an active bug**, because it currently has zero effect on any produced result:
+
+- `tune_fcnn_architecture()` only runs in the tuned-arm path (`01.5` §4.3a, gated by `TUNE_FCNN`, currently `False`).
+- Base-arm FCNN (`get_paper_models()`, fixed `param_base_FCNN`) never calls this function — it's untouched by the metric choice.
+- Every current headline figure/table reads from the `'base'` arm only: the representation boxplot (§5.3b) and heatmap/ANOVA input (§5.4+) both pass `arm='base'`; Table 2 (§5.7) and Figure 7 (§5.6, the only tuned-vs-base comparison) don't even include FCNN in their model lists (`TABLE2_MODELS`, the Figure 7 trio is RF/LightGBM/MPNN3).
+- 12 stale FCNN keys already sit in `data/processed/section4_tuned_params.json` from an earlier `TUNE_FCNN=True` run, selected under the Pearson-r scorer — orphaned, consumed by nothing downstream today.
+
+---
+
+### If revisited
+
+Should `TUNE_FCNN` ever be flipped to `True` and FCNN wired into a tuned-vs-base comparison, fix first: swap `scoring=_pearson_scorer` → `scoring="r2"` at `paper_models.py:189` (one line; the `max(scores, key=scores.get)` selection logic at line 191 is metric-agnostic) and update the docstring at line 177. Delete the 12 stale FCNN keys from `section4_tuned_params.json` first so they re-tune under the corrected metric — the tuning loop skips keys already present. No extra computation is introduced by the swap itself; it scores the same CV predictions differently, same fit count either way.
+
+---
+
 *Add new ADRs above this line, numbered sequentially.*
