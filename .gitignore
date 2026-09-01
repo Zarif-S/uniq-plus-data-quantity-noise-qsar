@@ -56,3 +56,17 @@ data/processed/section4_splits.pkl
 data/processed/section3_feat.pkl
 # large plotly HTML exports (regenerable; kept local, out of git)
 figures/*.html
+
+# Regenerable prediction/intermediate pickles (kept local, out of git)
+data/processed/*.pkl
+data/processed/mmp/adme.mmpdb
+data/processed/mmp/adme.fragments
+
+# Manual pre-edit backup files (never meant for git)
+*.bak
+*.bak_pre_*
+
+# AI-agent tooling: personal skill/command libraries, not project deliverables
+/.agents/skills/
+/.claude/skills/
+/.claude/commands/

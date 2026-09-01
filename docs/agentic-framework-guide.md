@@ -1,6 +1,6 @@
 # Getting Started
 
-> **Note**: This guide describes the [Strategic Agentic Coding Framework](https://github.com/Zarif-S/agentic-coding-framework) used to structure this project — not UNIQ+ itself. For UNIQ+ setup, see [CLAUDE.md](../CLAUDE.md) or [GETTING_STARTED.md](../GETTING_STARTED.md).
+> **Note**: This guide describes the [Strategic Agentic Coding Framework](https://github.com/Zarif-S/agentic-coding-framework) used to structure this project — not UNIQ+ itself. For UNIQ+ setup, see [README.md](../README.md) or [CLAUDE.md](../CLAUDE.md).
 
 This guide walks you from zero to a working project structure in about 20 minutes. It assumes you're using Claude Code.
 

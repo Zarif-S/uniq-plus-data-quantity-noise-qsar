@@ -1,6 +1,6 @@
-# UNIQ+ — OPIG, Data Quantity, Noise & ML in Drug Discovery, QSAR
+# UNIQ+ — Data Quantity, Noise & ML in Drug Discovery QSAR
 
-Project investigates how dataset size and label noise affect machine learning model performance for molecular property prediction (QSAR). It is a 6-week academic research project using two real-world drug discovery datasets and a range of ML approaches from classical fingerprint-based models to deep learning.
+Investigates how training set size and label noise affect machine learning model performance for molecular property prediction (QSAR). Uses a real-world ADME dataset and a range of ML approaches from classical fingerprint-based models to deep learning (ChemProp MPNN, DeepChem FCNN).
 
 ---
 
@@ -8,24 +8,23 @@ Project investigates how dataset size and label noise affect machine learning mo
 
 1. How does training set size affect predictive performance across ADME endpoints?
 2. How much label noise can ML models tolerate before performance degrades significantly?
-3. Do deep learning models (ChemProp, DeepChem) show different noise sensitivity than classical models (RF, XGBoost)?
+3. Do deep learning models (ChemProp, DeepChem) show different noise sensitivity than classical models (RF, XGBoost, LightGBM)?
 
 ---
 
-## Datasets
+## Dataset
 
 | Dataset | Compounds | Endpoints | Source |
 |---------|-----------|-----------|--------|
-| ADME public set | 3,521 | HLM/RLM clearance, MDR1 efflux, solubility, PPB (human/rat) | Public |
-| PDE10A inhibitors | ~TBD | pIC50 | Public |
+| ADME public set | 3,521 | HLM/RLM clearance, MDR1 efflux, solubility, PPB (human/rat) | Fang et al. (2023), public |
 
-The PDE10A dataset includes 7 split strategies: temporal (2011–2013), chemotype-based, and random — enabling evaluation of model generalisation under realistic deployment conditions.
+Paper recreation follows Fang et al. (2023) — *Prospective Validation of Machine Learning Algorithms for Absorption, Distribution, Metabolism, and Excretion Prediction: An Industrial Perspective*, DOI: [10.1021/acs.jcim.3c00160](https://doi.org/10.1021/acs.jcim.3c00160) — as the methodological baseline before extending into the data-quantity and noise experiments.
 
 ---
 
 ## Setup
 
-Requires Python 3.10 and [uv](https://github.com/astral-sh/uv).
+Requires Python 3.11 and [uv](https://github.com/astral-sh/uv).
 
 ```bash
 # Install uv if not already installed
@@ -33,7 +32,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Clone and install pinned environment
 git clone <repository-url>
-cd UNIQ+
+cd uniq-plus-data-quantity-noise-qsar
 uv sync
 
 # Activate and launch
@@ -41,42 +40,39 @@ source .venv/bin/activate
 jupyter lab
 ```
 
-No environment variables required — all datasets are open source and loaded from local files.
+No environment variables required — all data is open source and loaded from local files.
 
 ---
 
 ## Project Structure
 
 ```
-UNIQ+/
-├── notebooks/          # EDA, experiments, results (numbered: 01_, 02_, ...)
-├── src/                # Reusable modules imported by notebooks
-│   ├── features.py     # Fingerprint/descriptor computation (RDKit)
-│   ├── models.py       # Model wrappers and training utilities
-│   ├── plotting.py     # Reusable plot functions
-│   └── noise.py        # Label noise injection (upcoming)
+uniq-plus-data-quantity-noise-qsar/
+├── notebooks/           # EDA, paper recreation, and experiment notebooks (numbered: 01_, 03_, 04_, ...)
+├── src/                 # Reusable modules imported by notebooks (features, models, cleaning, noise, ...)
 ├── data/
-│   ├── raw/            # Original datasets, never modified
-│   └── processed/      # Cleaned/featurised data
-├── tests/              # Sanity tests for src/ modules
-└── pyproject.toml      # Dependencies (managed via uv)
+│   ├── raw/              # Original datasets, never modified
+│   └── processed/        # Cleaned/featurised data (large intermediate files are gitignored — see notebooks to regenerate)
+├── tests/                # Sanity tests for src/ modules
+└── pyproject.toml        # Dependencies (managed via uv)
 ```
 
 ---
 
-## Current Status
+## Notebooks
 
-| Phase | Status |
-|-------|--------|
-| Environment setup | Done |
-| ADME dataset loaded | Done |
-| Exploratory data analysis | In progress |
-| Baseline ML models (RF, XGBoost, LightGBM) | Upcoming |
-| Data quantity experiments (learning curves) | Upcoming |
-| Label noise experiments | Upcoming |
-| Deep learning (ChemProp, DeepChem) | Upcoming |
+| Notebook | Content |
+|---|---|
+| `01.5_adme_biogen_public_recreation.ipynb` | Paper recreation: EDA, preprocessing, featurization, 9-model baseline + tuned evaluation |
+| `01.6_adme_paper_recreation_results.ipynb` | Paper recreation results tables/figures (Table 2, Figure 7 recreation) |
+| `01.7_adme_mmp_analysis.ipynb` | Matched molecular pair analysis |
+| `01.8_feature_selection.ipynb` | Feature selection diagnostics |
+| `01.9_stereochemistry_analysis.ipynb` | Per-endpoint stereocentre / unassigned-stereo analysis |
+| `03_adme_data_quantity.ipynb` | Data-quantity (learning curve) experiment |
+| `04_adme_noise.ipynb` | Label noise injection experiment |
+| `05_dataset_size_comparison_viz.ipynb` | Combined data-quantity/noise visualisation |
 
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the current sprint and [ROADMAP.md](ROADMAP.md) for the full research timeline.
+Superseded early-stage notebooks are kept in `notebooks/archive/` for reference.
 
 ---
 
@@ -88,20 +84,38 @@ uv run pytest tests/
 
 ---
 
+## Benchmarks
+
+`benchmarks/` contains standalone A/B scripts used to make infrastructure decisions (CPU vs MPS device choice, cross-validation parallelism layout) — not part of the research pipeline itself. They run from any working directory:
+
+```bash
+python benchmarks/bench_fcnn_device.py [epochs]
+python benchmarks/bench_parallelism.py --n-jobs-model 1 --n-jobs-cv 3 --label A
+```
+
+Both require `data/processed/section4_splits.pkl`, which is a large intermediate file regenerated by `01.5_adme_biogen_public_recreation.ipynb` (not tracked in git — run the notebook first).
+
+---
+
 ## Documentation
 
-- [ROADMAP.md](ROADMAP.md) — Research timeline and milestones
-- [PROJECT_PLAN.md](PROJECT_PLAN.md) — Current sprint
-- [DECISIONS.md](DECISIONS.md) — Architectural decision records
-- [LESSONS_LEARNED.md](LESSONS_LEARNED.md) — Post-project lessons
-- [CHANGELOG.md](CHANGELOG.md) — Change history
+- [PROJECT_PLAN.md](PROJECT_PLAN.md) — final project status
+- [DECISIONS.md](DECISIONS.md) — architectural decision records (ADRs)
+- [LESSONS_LEARNED.md](LESSONS_LEARNED.md) — process and technical lessons
+- [CHANGELOG.md](CHANGELOG.md) — change history
 
 ---
 
 ## Built With
 
-This project uses the [Strategic Agentic Coding Framework](https://github.com/Zarif-S/agentic-coding-framework) for documentation structure and AI-agent workflow — a hierarchical doc system (CLAUDE.md / ROADMAP.md / PROJECT_PLAN.md) that keeps AI coding assistants context-efficient across a project. See [`docs/agentic-framework-guide.md`](docs/agentic-framework-guide.md) for a local quickstart guide.
+This project used the [Strategic Agentic Coding Framework](https://github.com/Zarif-S/agentic-coding-framework) for documentation structure and AI-agent workflow — a hierarchical doc system (CLAUDE.md / PROJECT_PLAN.md / DECISIONS.md) that keeps AI coding assistants context-efficient across a project. See [`docs/agentic-framework-guide.md`](docs/agentic-framework-guide.md) for a local quickstart guide.
 
 ---
 
-**Last Updated**: 2026-07-10 | **Status**: Active development | **Maintainer**: Zarif
+## Acknowledgments
+
+A 8-week academic research project with [OPIG](https://opig.stats.ox.ac.uk/) (Oxford Protein Informatics Group). Supervised by Fergus Imrie, Acer Blake, and Charlotte Dean MBE.
+
+---
+
+**Status**: Project complete | **Maintainer**: Zarif

@@ -3,8 +3,7 @@
 ## Breadcrumbs
 
 - **New to the project?** → [CLAUDE.md](CLAUDE.md) for setup and overview
-- **Current work?** → [PROJECT_PLAN.md](PROJECT_PLAN.md)
-- **Previous roadmap (parked experiments)?** → [OLD_ROADMAP.md](OLD_ROADMAP.md)
+- **Final status?** → [PROJECT_PLAN.md](PROJECT_PLAN.md)
 
 ---
 
@@ -26,11 +25,9 @@
 
 ---
 
-## Current Focus: Reference Paper Recreation
+## Project Complete
 
-**Goal**: Reproduce the published results from the reference paper (Biogen public ADME dataset) as faithfully as possible before designing original experiments on top.
-
-**Why this first**: Reproducing published results validates our pipeline, confirms data handling is correct, and establishes credible baselines grounded in the literature. Any deviations from published numbers become a documented, explainable finding rather than an unknown bug.
+Both planned phases below are complete. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the final per-notebook status.
 
 **Paper**: Fang et al. (2023) — *Prospective Validation of Machine Learning Algorithms for Absorption, Distribution, Metabolism, and Excretion Prediction: An Industrial Perspective*. DOI: 10.1021/acs.jcim.3c00160
 
@@ -38,32 +35,24 @@
 
 ## Phases
 
-### Phase R1 — Paper Recreation (`01.5_adme_biogen_public_recreation.ipynb`)
+### Phase R1 — Paper Recreation (`01.5_adme_biogen_public_recreation.ipynb`, `01.6_adme_paper_recreation_results.ipynb`)
 
-**Goal**: Match the paper's reported metrics as closely as possible using the same dataset, same endpoints, and (where described) the same models and splits.
+**Goal**: Match the paper's reported metrics as closely as possible using the same dataset, same endpoints, and (where described) the same models and splits, before designing original experiments on top — reproducing published results validates the pipeline, establishes baselines grounded in the literature and allows us to investigate how small changes in methodology affects the papers claims.
 
-**Initiatives**:
-1. Read and document the paper's exact methodology — featurization, models, split strategy, metrics reported
-2. Replicate each model/split combination in the notebook
-3. Record our reproduced numbers alongside the paper's numbers in a comparison table
-4. Document any deviations and their likely causes (e.g., random seed, library version, underdefined preprocessing)
-
-**Exit criteria**: Comparison table with paper vs reproduced metrics for all reported models/endpoints. Deviations explained or flagged.
+**Result**: Comparison table with paper vs reproduced metrics for all reported models/endpoints; deviations investigated and explained (see `ADR-007`, `LESSONS_LEARNED.md`).
 
 ---
 
-### Phase R2 — Original Experiments (Parked)
+### Phase R2 — Original Experiments (`03_adme_data_quantity.ipynb`, `04_adme_noise.ipynb`, `05_dataset_size_comparison_viz.ipynb`)
 
-The learning curve, noise injection, and 2D grid experiments from the original roadmap are parked. See [OLD_ROADMAP.md](OLD_ROADMAP.md) for full design.
-
-**Will resume when**: Paper recreation is complete and validated.
+The learning curve (data quantity) and noise injection experiments, run on the paper-faithful pipeline established in Phase R1.
 
 ---
 
 ## Key Links
 
-[PROJECT_PLAN.md](PROJECT_PLAN.md) · [OLD_ROADMAP.md](OLD_ROADMAP.md) · [DECISIONS.md](DECISIONS.md) · [CHANGELOG.md](CHANGELOG.md)
+[PROJECT_PLAN.md](PROJECT_PLAN.md) · [DECISIONS.md](DECISIONS.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ---
 
-**Last Updated**: 2026-07-22
+**Last Updated**: 2026-09-01

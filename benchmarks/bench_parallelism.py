@@ -11,6 +11,7 @@ Usage:
   python bench_parallelism.py --n-jobs-model 1 --n-jobs-cv 3 --label A
 """
 import argparse, json, os, sys, threading, time
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -19,11 +20,12 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.svm import SVR
 from sklearn.linear_model import Lasso
 
-sys.path.insert(0, "/Users/zarif/Documents/Projects/uniq-plus-data-quantity-noise-qsar")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 from src.models.paper_models import tune_paper_model
 from src.hyperparams import param_base_RF, param_search_SVM, param_base_SVM, param_search_Lasso, param_base_Lasso
 
-SPLITS = "/Users/zarif/Documents/Projects/uniq-plus-data-quantity-noise-qsar/data/processed/section4_splits.pkl"
+SPLITS = str(REPO_ROOT / "data/processed/section4_splits.pkl")
 
 # RF: reduced grid that still contains the RAM-heavy corner (n_estimators=1000,
 # max_features=None, max_depth=None). 8 combos x 5-fold = 40 fits.

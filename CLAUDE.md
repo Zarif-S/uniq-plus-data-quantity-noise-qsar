@@ -16,12 +16,12 @@
 ### Current Status
 ✅ Environment set up and pinned (pyproject.toml + uv.lock)
 ✅ ADME public dataset loaded (3521 compounds, 6 endpoints)
-✅ EDA complete (ADME + PDE10A)
-✅ Baseline ML models (MeanPredictor, Ridge, BayesianRidge, RF, XGBoost, LightGBM)
-✅ Hyperparameter tuning (LightGBM, RF on RDKit2D; MPNN3 early stopping)
-🔄 Deep learning models (MPNN3 trained; graph-only MPNN in progress)
-⏳ Data quantity experiments (learning curves)
-⏳ Label noise experiments
+✅ EDA complete (ADME; PDE10A parked)
+✅ Paper recreation (Fang et al. 2023) — 9 models (RF, XGBoost, LightGBM, SVM, Lasso, BayesianRidge, FCNN, MPNN1, MPNN2), baseline + tuned arms
+✅ Data quantity experiments (learning curves)
+✅ Label noise experiments
+
+Project complete — see [PROJECT_PLAN.md](PROJECT_PLAN.md) for final status.
 
 ---
 
@@ -30,28 +30,30 @@
 **What are you trying to do?**
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ TASK                              → READ THIS FIRST            │
-├────────────────────────────────────────────────────────────────┤
-│ Setup project & install deps     → This file (below)          │
-│ Understand strategic vision      → ROADMAP.md                 │
-│ See current sprint/iteration     → PROJECT_PLAN.md            │
-│ Review recent changes            → CHANGELOG.md               │
-│ Cross-concept event flows        → SYNCHRONIZATIONS.md        │
-├────────────────────────────────────────────────────────────────┤
-│ src/ modules (overview + pipeline)     → src/CLAUDE.md          │
-│ EDA module                             → src/eda/CLAUDE.md       │
-│ Features module (FCFP4, RDKit2D)       → src/features/CLAUDE.md  │
-│ Plotting module                        → src/plotting/CLAUDE.md  │
-│ Cleaning module (NaN filter, IQR)      → src/cleaning/CLAUDE.md  │
-│ Models module (baselines, evaluation)  → src/models/CLAUDE.md    │
-│ Splitting module (PDE10A 7 strategies) → src/splitting/CLAUDE.md │
-│ Tuning module (LightGBM, MPNN3)        → src/tuning/CLAUDE.md    │
-│ Noise module (label injection)         → src/noise/CLAUDE.md     │
-├────────────────────────────────────────────────────────────────┤
-│ All logged decisions (ADR)       → DECISIONS.md               │
-│ Process & technical lessons      → LESSONS_LEARNED.md         │
-└────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TASK                                     → READ THIS FIRST                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Setup project & install deps             → This file (below)               │
+│ Understand strategic vision              → ROADMAP.md                      │
+│ See current sprint/iteration             → PROJECT_PLAN.md                 │
+│ Review recent changes                    → CHANGELOG.md                    │
+│ Cross-concept event flows                → SYNCHRONIZATIONS.md             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ src/ modules (overview + pipeline)       → src/CLAUDE.md                   │
+│ EDA module                               → src/eda/CLAUDE.md               │
+│ Features module (FCFP4, RDKit2D)         → src/features/CLAUDE.md          │
+│ Plotting module                          → src/plotting/CLAUDE.md          │
+│ Cleaning module (NaN filter, IQR)        → src/cleaning/CLAUDE.md          │
+│ Models module (9 models incl. FCNN/MPNN) → src/models/CLAUDE.md            │
+│ Splitting module (PDE10A 7 strategies)   → src/splitting/CLAUDE.md         │
+│ Tuning module (classical + FCNN/MPNN)    → src/tuning/CLAUDE.md            │
+│ Noise module (label injection)           → src/noise/CLAUDE.md             │
+│ Feature selection module (RFE, pruning)  → src/feature_selection/CLAUDE.md │
+│ MMP module (matched molecular pairs)     → src/mmp/CLAUDE.md               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ All logged decisions (ADR)               → DECISIONS.md                    │
+│ Process & technical lessons              → LESSONS_LEARNED.md              │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 **For AI agents**: Read this file first, then follow the navigation table above to find module-specific context. Check [PROJECT_PLAN.md](PROJECT_PLAN.md) for current priorities before implementing features.

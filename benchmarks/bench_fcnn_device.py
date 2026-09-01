@@ -6,13 +6,15 @@ GPU test (the ChemProp MPNN cannot reach MPS on 1.6.1). Reports wall-clock per d
 prediction sanity check so we know MPS isn't silently producing garbage.
 """
 import sys, time
+from pathlib import Path
 import joblib
 import numpy as np
 
-sys.path.insert(0, "/Users/zarif/Documents/Projects/uniq-plus-data-quantity-noise-qsar")
+REPO_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(REPO_ROOT))
 from src.hyperparams import param_base_FCNN
 
-SPLITS = "/Users/zarif/Documents/Projects/uniq-plus-data-quantity-noise-qsar/data/processed/section4_splits.pkl"
+SPLITS = str(REPO_ROOT / "data/processed/section4_splits.pkl")
 
 
 def build_and_fit(X, y, device_str, epochs):
