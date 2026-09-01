@@ -163,7 +163,7 @@ Provides a structured way to acknowledge documentation gaps without blocking dev
 
 ### Implementation
 
-**Simple Approach** (recommended): See [CONTRIBUTING.md - Documentation Practices](../CONTRIBUTING.md#documentation-practices) for lightweight tracking using:
+**Simple Approach** (recommended): lightweight tracking using:
 - Inline `TODO:` comments in documentation files
 - GitHub Issues with `documentation` label
 - Code review enforcement
