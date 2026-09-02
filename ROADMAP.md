@@ -27,7 +27,7 @@
 
 ## Project Complete
 
-Both planned phases below are complete. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the final per-notebook status.
+The project's strategic priority shifted partway through: the original vision was a data-quantity/noise study (below), but once reproduction work started, testing whether Fang et al.'s claims — built on their confidential dataset — held on the public release turned out to be more valuable and expanded to become the project's centre of gravity (Phase R1). Data quantity/noise was deprioritised while that expanded, then picked back up as a secondary strand once time allowed (Phase R2). Both phases are complete. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the final per-notebook status.
 
 **Paper**: Fang et al. (2023) — *Prospective Validation of Machine Learning Algorithms for Absorption, Distribution, Metabolism, and Excretion Prediction: An Industrial Perspective*. DOI: 10.1021/acs.jcim.3c00160
 
@@ -35,17 +35,17 @@ Both planned phases below are complete. See [PROJECT_PLAN.md](PROJECT_PLAN.md) f
 
 ## Phases
 
-### Phase R1 — Paper Recreation (`01.5_adme_biogen_public_recreation.ipynb`, `01.6_adme_paper_recreation_results.ipynb`)
+### Phase R1 — Paper Recreation (primary focus) (`01.5_adme_biogen_public_recreation.ipynb`, `01.6_adme_paper_recreation_results.ipynb`)
 
 **Goal**: Match the paper's reported metrics as closely as possible using the same dataset, same endpoints, and (where described) the same models and splits, before designing original experiments on top — reproducing published results validates the pipeline, establishes baselines grounded in the literature and allows us to investigate how small changes in methodology affects the papers claims.
 
-**Result**: Comparison table with paper vs reproduced metrics for all reported models/endpoints; deviations investigated and explained (see `ADR-007`, `LESSONS_LEARNED.md`).
+**Result**: Comparison table with paper vs reproduced metrics for all reported models/endpoints; deviations investigated and explained (see `ADR-007`, `LESSONS_LEARNED.md`). Beyond the metrics table, each headline claim (non-RF models beat RF; representation matters more than algorithm choice; MAE falls as test/train similarity rises) was re-tested for statistical significance (paired ANOVA + Tukey HSD) on the public data specifically — the question being whether conclusions drawn from a paper's public substitute dataset are as trustworthy as the ones drawn from its confidential original, since that public data is a foundation others (including this project) build on.
 
 ---
 
-### Phase R2 — Original Experiments (`03_adme_data_quantity.ipynb`, `04_adme_noise.ipynb`, `05_dataset_size_comparison_viz.ipynb`)
+### Phase R2 — Original Experiments, revisited late (`03_adme_data_quantity.ipynb`, `04_adme_noise.ipynb`, `05_dataset_size_comparison_viz.ipynb`)
 
-The learning curve (data quantity) and noise injection experiments, run on the paper-faithful pipeline established in Phase R1.
+The learning curve (data quantity) and noise injection experiments — the project's original central strand — run on the paper-faithful pipeline established in Phase R1, once reproduction work concluded.
 
 ---
 
@@ -55,4 +55,4 @@ The learning curve (data quantity) and noise injection experiments, run on the p
 
 ---
 
-**Last Updated**: 2026-09-01
+**Last Updated**: 2026-09-02
