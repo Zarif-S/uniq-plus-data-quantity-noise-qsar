@@ -1,7 +1,5 @@
 # Predicting ADME Properties using Machine Learning
 
-*(Originally titled: Understanding the Effects of Data Quantity and Label Noise on Machine Learning Models in Drug Discovery)*
-
 Reproduces and stress-tests the claims of Fang et al. (2023) — a Biogen study validating ML algorithms for ADME (Absorption, Distribution, Metabolism, Excretion) prediction — using their publicly released dataset in place of the confidential in-house one the paper was built on. Extends into feature selection, statistical significance testing of model comparisons, and (as a secondary strand) how training-set size and label noise affect model performance.
 
 ---
